@@ -1,0 +1,8 @@
+[package]
+name = "torrentui"
+version = "0.1.0"
+authors = ["Sergei Shavlovskii <fucaluca@proton.me>"]
+license = "MIT"
+edition = "2024"
+
+[dependencies]

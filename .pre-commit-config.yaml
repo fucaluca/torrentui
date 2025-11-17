@@ -1,0 +1,27 @@
+repos:
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+      - id: fmt
+      - id: cargo-check
+  - repo: local
+    hooks:
+      - id: nix-fmt
+        name: nix format
+        entry: nixpkgs-fmt
+        language: system
+        types: [nix]
+        files: '\.nix$'
+
+      - id: clippy
+        name: clippy
+        entry: cargo clippy -- -D warnings
+        language: system
+        pass_filenames: false
+        types: [rust]
+
+      - id: tests
+        name: tests
+        entry: cargo nextest run
+        language: system
+        pass_filenames: false
