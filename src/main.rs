@@ -6,8 +6,10 @@ mod app;
 mod errors;
 mod tui;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     crate::errors::init()?;
     let mut app = App::new();
+    app.run().await?;
     Ok(())
 }
