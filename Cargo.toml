@@ -7,8 +7,11 @@ edition = "2024"
 
 [dependencies]
 color-eyre = { version = "0.6.5" }
+config = "0.15.19"
 crossterm = { version = "0.29.0" }
+directories = "6.0.0"
 ratatui = "0.29.0"
+serde = { version = "1.0.228", features = ["derive"] }
 tokio = { version = "1.48.0", features = ["full"] }
 tracing = "0.1.41"
 

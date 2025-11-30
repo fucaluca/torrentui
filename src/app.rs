@@ -1,15 +1,22 @@
 use color_eyre::eyre::Result;
 use ratatui::crossterm::event::KeyEvent;
 
-use crate::tui::{Event, Tui};
+use crate::{
+    settings::Settings,
+    tui::{Event, Tui},
+};
 
-#[derive(Default)]
 pub struct App {
     should_quit: bool,
+    settings: Settings,
 }
 impl App {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new() -> Result<Self> {
+        let settings = Settings::new()?;
+        Ok(Self {
+            settings,
+            should_quit: false,
+        })
     }
 
     pub async fn run(&mut self) -> Result<()> {
