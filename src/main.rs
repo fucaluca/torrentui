@@ -2,8 +2,10 @@ use color_eyre::Result;
 
 use crate::app::App;
 
+mod actions;
 mod app;
 mod errors;
+mod mode;
 mod settings;
 mod tui;
 

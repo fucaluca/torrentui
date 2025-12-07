@@ -1,3 +1,3 @@
-pub fn default_update_interval() -> u8 {
+pub fn update_interval() -> u8 {
     1
 }

@@ -2,7 +2,7 @@ use color_eyre::eyre::Result;
 use ratatui::crossterm::event::KeyEvent;
 
 use crate::{
-    settings::Settings,
+    settings::{ConfigSource, Settings, get_config_dir},
     tui::{Event, Tui},
 };
 
@@ -12,7 +12,9 @@ pub struct App {
 }
 impl App {
     pub fn new() -> Result<Self> {
-        let settings = Settings::new()?;
+        let config_file_path = get_config_dir().join("config.toml");
+        let config_source = ConfigSource::File(config_file_path);
+        let settings = Settings::new(config_source)?;
         Ok(Self {
             settings,
             should_quit: false,
