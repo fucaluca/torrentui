@@ -37,10 +37,10 @@ impl From<KeyEvent> for KeyString {
 }
 
 #[derive(Debug, Default)]
-pub struct KeyBindings(HashMap<Mode, BTreeMap<KeyString, KeyBindingsNode>>);
+pub struct KeyBindings(HashMap<Mode, KeyBindingsNode>);
 
 impl Deref for KeyBindings {
-    type Target = HashMap<Mode, BTreeMap<KeyString, KeyBindingsNode>>;
+    type Target = HashMap<Mode, KeyBindingsNode>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -62,7 +62,7 @@ impl<'de> Deserialize<'de> for KeyBindings {
         let bindings = parsed_map
             .into_iter()
             .map(|(mode, inner_map)| {
-                let mut mode_bindings = BTreeMap::new();
+                let mut mode_bindings = KeyBindingsNode::default();
 
                 for (raw, value) in inner_map {
                     let key_events = parse_key_sequence(&raw).map_err(serde::de::Error::custom)?;
@@ -79,7 +79,7 @@ impl<'de> Deserialize<'de> for KeyBindings {
 }
 
 pub fn add_binding_to_tree(
-    root: &mut BTreeMap<KeyString, KeyBindingsNode>,
+    root: &mut KeyBindingsNode,
     key_events: Vec<KeyEvent>,
     value: KeyBindingValue,
 ) {
@@ -92,10 +92,10 @@ pub fn add_binding_to_tree(
 
         if is_last {
             let node = KeyBindingsNode::from(value.clone());
-            current.insert(key, node);
+            current.next.insert(key, node);
         } else {
-            let node = current.entry(key).or_default();
-            current = &mut node.next;
+            let node = current.next.entry(key).or_default();
+            current = node;
         }
     }
 }
@@ -233,7 +233,7 @@ mod tests {
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .get(&Mode::TorrentList)
-            .and_then(|k| k.get(&key_string))
+            .and_then(|k| k.next.get(&key_string))
             .unwrap_or_else(|| panic!("KeyString {key_string:?} not found"));
         assert_eq!(keybindings.action, Action::Quit);
         assert_eq!(keybindings.description, None);
@@ -254,7 +254,7 @@ mod tests {
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .get(&Mode::TorrentList)
-            .and_then(|k| k.get(&key_string))
+            .and_then(|k| k.next.get(&key_string))
             .unwrap_or_else(|| panic!("KeyString {key_string:?} not found"));
 
         assert_eq!(keybindings.action, Action::Quit);
@@ -277,7 +277,7 @@ mod tests {
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .get(&Mode::TorrentList)
-            .and_then(|k| k.get(&key_string))
+            .and_then(|k| k.next.get(&key_string))
             .unwrap_or_else(|| panic!("KeyString {key_string:?} not found"));
 
         assert_eq!(keybindings.action, Action::Quit);
@@ -300,7 +300,7 @@ mod tests {
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .get(&Mode::TorrentList)
-            .and_then(|k| k.get(&key_string))
+            .and_then(|k| k.next.get(&key_string))
             .unwrap_or_else(|| panic!("KeyString {key_string:?} not found"));
 
         assert_eq!(keybindings.action, Action::Quit);
@@ -323,7 +323,7 @@ mod tests {
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .get(&Mode::TorrentList)
-            .and_then(|k| k.get(&key_string))
+            .and_then(|k| k.next.get(&key_string))
             .unwrap_or_else(|| panic!("KeyString {key_string:?} not found"));
 
         assert_eq!(keybindings.action, Action::Quit);
@@ -349,7 +349,7 @@ mod tests {
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .get(&Mode::TorrentList)
-            .and_then(|k| k.get(&key_string1))
+            .and_then(|k| k.next.get(&key_string1))
             .unwrap_or_else(|| panic!("KeyString {key_string1:?} not found"));
 
         assert_eq!(keybindings.action, Action::NoOp);
@@ -385,7 +385,7 @@ mod tests {
         let keybindings = settings
             .keybindings
             .get(&Mode::TorrentList)
-            .and_then(|k| k.get(&key_string1))
+            .and_then(|k| k.next.get(&key_string1))
             .unwrap_or_else(|| panic!("KeyString {key_string1:?} not found"));
 
         assert_eq!(keybindings.action, Action::NoOp);
