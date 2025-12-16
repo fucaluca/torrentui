@@ -9,14 +9,15 @@ use serde::Deserialize;
 use crate::settings::keybindings::KeyBindings;
 
 mod defaults;
-mod keybindings;
+pub mod keybindings;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct Settings {
     #[serde(default = "defaults::update_interval")]
+    #[allow(dead_code)] // TODO: remove
     update_torrent_list_interval: u8,
     #[serde(default)]
-    keybindings: KeyBindings,
+    pub keybindings: KeyBindings,
 }
 
 #[derive(Debug)]

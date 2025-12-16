@@ -2,22 +2,26 @@ use color_eyre::eyre::Result;
 use ratatui::crossterm::event::KeyEvent;
 
 use crate::{
-    settings::{ConfigSource, Settings, get_config_dir},
+    actions::Action,
+    app_state::AppState,
+    key_mode::KeyMode,
+    settings::Settings,
     tui::{Event, Tui},
 };
 
-pub struct App {
+pub struct App<'a> {
     should_quit: bool,
-    settings: Settings,
+    app_state: AppState<'a>,
 }
-impl App {
-    pub fn new() -> Result<Self> {
-        let config_file_path = get_config_dir().join("config.toml");
-        let config_source = ConfigSource::File(config_file_path);
-        let settings = Settings::new(config_source)?;
+impl<'a> App<'a> {
+    pub fn new(settings: &'a Settings) -> Result<Self> {
+        let app_state = AppState::builder(settings)
+            .key_mode(KeyMode::default())
+            .build()?;
+
         Ok(Self {
-            settings,
             should_quit: false,
+            app_state,
         })
     }
 
@@ -34,18 +38,23 @@ impl App {
         Ok(())
     }
 
-    async fn handle_events(&self, tui: &mut Tui) -> Result<()> {
-        let Some(event) = tui.event_rx.recv().await else {
-            return Ok(());
-        };
-        // TODO: Добавить обработку других событий
-        let Event::Key(key) = event;
-        self.handle_key_events(key).await?;
-
+    async fn handle_events(&mut self, tui: &mut Tui) -> Result<()> {
+        if let Some(event) = tui.event_rx.recv().await {
+            let Event::Key(key_event) = event;
+            self.handle_key_events(key_event).await?;
+        }
         Ok(())
     }
 
-    async fn handle_key_events(&self, _key: KeyEvent) -> Result<()> {
-        todo!("handle key events")
+    async fn handle_key_events(&mut self, key_event: KeyEvent) -> Result<()> {
+        if let Some(action) = self.app_state.action(key_event) {
+            match action {
+                Action::Quit => self.should_quit = true,
+                Action::AddTorrent => todo!(),
+                Action::NoOp => {}
+            }
+        }
+
+        Ok(())
     }
 }

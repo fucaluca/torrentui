@@ -7,13 +7,21 @@ use color_eyre::eyre::{Result, bail};
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use serde::Deserialize;
 
-use crate::{actions::Action, mode::Mode};
+use crate::{actions::Action, key_mode::KeyMode};
 
 #[derive(Debug, Default)]
 pub struct KeyBindingsNode {
-    action: Action,
-    description: Option<String>,
-    next: BTreeMap<KeyString, KeyBindingsNode>,
+    pub action: Action,
+    #[allow(dead_code)] // TODO: remove
+    pub description: Option<String>,
+    pub next: BTreeMap<KeyString, KeyBindingsNode>,
+}
+
+#[cfg(test)]
+impl KeyBindingsNode {
+    pub fn set_action(&mut self, action: Action) {
+        self.action = action;
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -37,10 +45,10 @@ impl From<KeyEvent> for KeyString {
 }
 
 #[derive(Debug, Default)]
-pub struct KeyBindings(HashMap<Mode, KeyBindingsNode>);
+pub struct KeyBindings(HashMap<KeyMode, KeyBindingsNode>);
 
 impl Deref for KeyBindings {
-    type Target = HashMap<Mode, KeyBindingsNode>;
+    type Target = HashMap<KeyMode, KeyBindingsNode>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -58,7 +66,7 @@ impl<'de> Deserialize<'de> for KeyBindings {
         D: serde::Deserializer<'de>,
     {
         let parsed_map =
-            HashMap::<Mode, BTreeMap<String, KeyBindingValue>>::deserialize(deserializer)?;
+            HashMap::<KeyMode, BTreeMap<String, KeyBindingValue>>::deserialize(deserializer)?;
         let bindings = parsed_map
             .into_iter()
             .map(|(mode, inner_map)| {
@@ -213,9 +221,12 @@ fn parse_key_code_with_modifiers(raw: &str, mut modifiers: KeyModifiers) -> Resu
 }
 
 #[cfg(test)]
+pub mod test_utils;
+
+#[cfg(test)]
 mod tests {
     use super::{
-        Action, KeyBindingsNode, KeyCode, KeyEvent, KeyModifiers, KeyString, Mode, Result,
+        Action, KeyBindingsNode, KeyCode, KeyEvent, KeyMode, KeyModifiers, KeyString, Result,
     };
     use crate::settings::{ConfigSource, Settings};
     use pretty_assertions::assert_eq;
@@ -232,7 +243,7 @@ mod tests {
         let key_string = KeyString::from(key_event);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
-            .get(&Mode::TorrentList)
+            .get(&KeyMode::TorrentList)
             .and_then(|k| k.next.get(&key_string))
             .unwrap_or_else(|| panic!("KeyString {key_string:?} not found"));
         assert_eq!(keybindings.action, Action::Quit);
@@ -253,7 +264,7 @@ mod tests {
         let key_string = KeyString::from(key_event);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
-            .get(&Mode::TorrentList)
+            .get(&KeyMode::TorrentList)
             .and_then(|k| k.next.get(&key_string))
             .unwrap_or_else(|| panic!("KeyString {key_string:?} not found"));
 
@@ -276,7 +287,7 @@ mod tests {
         let key_string = KeyString::from(key_event);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
-            .get(&Mode::TorrentList)
+            .get(&KeyMode::TorrentList)
             .and_then(|k| k.next.get(&key_string))
             .unwrap_or_else(|| panic!("KeyString {key_string:?} not found"));
 
@@ -299,7 +310,7 @@ mod tests {
         let key_string = KeyString::from(key_event);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
-            .get(&Mode::TorrentList)
+            .get(&KeyMode::TorrentList)
             .and_then(|k| k.next.get(&key_string))
             .unwrap_or_else(|| panic!("KeyString {key_string:?} not found"));
 
@@ -322,7 +333,7 @@ mod tests {
         let key_string = KeyString::from(key_event);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
-            .get(&Mode::TorrentList)
+            .get(&KeyMode::TorrentList)
             .and_then(|k| k.next.get(&key_string))
             .unwrap_or_else(|| panic!("KeyString {key_string:?} not found"));
 
@@ -348,7 +359,7 @@ mod tests {
 
         let keybindings: &KeyBindingsNode = settings
             .keybindings
-            .get(&Mode::TorrentList)
+            .get(&KeyMode::TorrentList)
             .and_then(|k| k.next.get(&key_string1))
             .unwrap_or_else(|| panic!("KeyString {key_string1:?} not found"));
 
@@ -384,7 +395,7 @@ mod tests {
 
         let keybindings = settings
             .keybindings
-            .get(&Mode::TorrentList)
+            .get(&KeyMode::TorrentList)
             .and_then(|k| k.next.get(&key_string1))
             .unwrap_or_else(|| panic!("KeyString {key_string1:?} not found"));
 
