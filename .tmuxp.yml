@@ -2,21 +2,21 @@ session_name: torrentui
 start_directory: &dir ./
 windows:
   - window_name: dev
-    layout: 4c82,191x35,0,0{142x35,0,0,45,48x35,143,0,46}
+    # layout: 4c82,191x35,0,0{142x35,0,0,45,48x35,143,0,46}
     environment:
       PROJECT_DIRECTORY: *dir
     panes:
       - focus: true
-      - focus: false
-        environment:
-          RUSTFLAGS: -A warnings
-        shell_command:
-          # - cargo watch --ignore 'README.md*' -- tmux-pane-onfail cargo nextest r --status-level=none
-          - tmux-pane h
-  - window_name: mermaid watch
-    environment:
-      PROJECT_DIRECTORY: *dir
-    panes:
-      - focus: false
-        shell_command:
-          - cargo watch -w README.md -- mmdc -i README.md -o _diagram.pdf
+      # - focus: false
+      #   environment:
+      #     RUSTFLAGS: -A warnings
+      #   shell_command:
+      #     # - cargo watch --ignore 'README.md*' -- tmux-pane-onfail cargo nextest r --status-level=none
+      #     - tmux-pane h
+  # - window_name: mermaid watch
+  #   environment:
+  #     PROJECT_DIRECTORY: *dir
+  #   panes:
+  #     - focus: false
+  #       shell_command:
+  #         - cargo watch -w README.md -- mmdc -i README.md -o _diagram.pdf
