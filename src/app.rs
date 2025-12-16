@@ -1,5 +1,5 @@
 use color_eyre::eyre::Result;
-use ratatui::crossterm::event::KeyEvent;
+use crossterm::event::KeyEvent;
 
 use crate::{
     actions::Action,
@@ -12,6 +12,7 @@ use crate::{
 pub struct App<'a> {
     should_quit: bool,
     app_state: AppState<'a>,
+    settings: &'a Settings,
 }
 impl<'a> App<'a> {
     pub fn new(settings: &'a Settings) -> Result<Self> {
@@ -22,12 +23,13 @@ impl<'a> App<'a> {
         Ok(Self {
             should_quit: false,
             app_state,
+            settings,
         })
     }
 
     pub async fn run(&mut self) -> Result<()> {
         let mut tui = Tui::new()?;
-        tui.run()?;
+        tui.run(self.settings)?;
         loop {
             self.handle_events(&mut tui).await?;
             if self.should_quit {
@@ -40,8 +42,10 @@ impl<'a> App<'a> {
 
     async fn handle_events(&mut self, tui: &mut Tui) -> Result<()> {
         if let Some(event) = tui.event_rx.recv().await {
-            let Event::Key(key_event) = event;
-            self.handle_key_events(key_event).await?;
+            match event {
+                Event::Key(key_event) => self.handle_key_events(key_event).await?,
+                Event::UpdateTorrentList => {}
+            }
         }
         Ok(())
     }

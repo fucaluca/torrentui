@@ -1,5 +1,5 @@
 use color_eyre::eyre::{OptionExt, Result};
-use ratatui::crossterm::event::KeyEvent;
+use crossterm::event::KeyEvent;
 
 use crate::{
     actions::Action,
@@ -47,7 +47,6 @@ impl<'a> AppStateBuilder<'a> {
 pub struct AppState<'a> {
     keybindings: &'a KeyBindingsNode,
     keybindings_root: &'a KeyBindingsNode,
-    #[allow(dead_code)] // TODO: remov
     settings: &'a Settings,
 }
 
@@ -98,8 +97,8 @@ mod test {
         Settings,
         keybindings::{KeyBindingsNode, test_utils::KeyBindingsTestBuilder},
     };
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use pretty_assertions::assert_eq;
-    use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     #[test]
     fn get_action() -> Result<()> {

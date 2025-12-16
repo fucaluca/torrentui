@@ -1,4 +1,4 @@
-use ratatui::crossterm::event::KeyEvent;
+use crossterm::event::KeyEvent;
 
 use crate::{
     actions::Action,

@@ -4,7 +4,7 @@ use std::{
 };
 
 use color_eyre::eyre::{Result, bail};
-use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use serde::Deserialize;
 
 use crate::{actions::Action, key_mode::KeyMode};

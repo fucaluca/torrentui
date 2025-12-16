@@ -14,8 +14,7 @@ pub mod keybindings;
 #[derive(Debug, Deserialize, Default)]
 pub struct Settings {
     #[serde(default = "defaults::update_interval")]
-    #[allow(dead_code)] // TODO: remove
-    update_torrent_list_interval: u8,
+    pub update_torrent_list_interval: u8,
     #[serde(default)]
     pub keybindings: KeyBindings,
 }
