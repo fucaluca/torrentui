@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
     nixos-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     crane.url = "github:ipetkov/crane";
     fenix.url = "github:nix-community/fenix";
@@ -19,7 +19,7 @@
       unstable = nixos-unstable.legacyPackages.x86_64-linux;
       rust = fenix.packages.x86_64-linux.fromToolchainFile {
         file = ./rust-toolchain.toml;
-        sha256 = "sha256-SDu4snEWjuZU475PERvu+iO50Mi39KVjqCeJeNvpguU=";
+        sha256 = "sha256-sqSWJDUxc+zaz1nBWMAJKTAGBuGWP25GCftIOlCEAtA=";
       };
       craneLib = (crane.mkLib pkgs).overrideToolchain rust;
       cargoArtifacts = craneLib.buildDepsOnly {
