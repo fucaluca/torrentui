@@ -28,6 +28,21 @@
       package = craneLib.buildPackage {
         src = craneLib.cleanCargoSource ./.;
       };
+      cov-report = pkgs.writeShellScriptBin "cov-report" ''
+        ${rust}/bin/cargo llvm-cov nextest --lcov --output-path target/coverage.lcov
+      '';
+      nt = pkgs.writeShellScriptBin "nt" ''
+        ${rust}/bin/cargo nextest run
+      '';
+      cov-html = pkgs.writeShellScriptBin "cov-html" ''
+        export LLVM_PROFILE_FILE="target/grcov/torrentui.profraw"
+        export RUSTFLAGS="-Cinstrument-coverage"
+        ${rust}/bin/cargo test
+        grcov . --binary-path ./target/debug/deps/ -s . -t html --branch --ignore-not-existing --ignore '../*' --ignore "/*" -o target/grcov/html
+        xdg-open target/grcov/html/index.html
+        unset LLVM_PROFILE_FILE
+        unset RUSTFLAGS
+      '';
     in
     {
       packages.x86_64-linux.default = package;
@@ -44,6 +59,12 @@
           cargo-watch
           cargo-edit
           cargo-nextest
+          cargo-tarpaulin
+          cargo-llvm-cov
+          cov-report
+          cov-html
+          nt
+          grcov
           gh
 
           # Pre-commit dependencies
@@ -52,6 +73,8 @@
           statix
           deadnix
         ];
+        # RUSTFLAGS = "-Cinstrument-coverage";
+        # LLVM_PROFILE_FILE = "target/coverage/torrentui.profraw";
         shellHook = ''
           pre-commit install
         '';
