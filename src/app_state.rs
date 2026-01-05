@@ -73,7 +73,7 @@ impl<'a> AppState<'a> {
             })
     }
 
-    #[allow(dead_code)] // TODO: remove
+    #[allow(dead_code)] // TODO: remove this
     pub fn key_mode(&mut self, key_mode: KeyMode) -> Result<()> {
         let keybindings = self
             .settings
