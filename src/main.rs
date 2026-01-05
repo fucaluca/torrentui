@@ -8,9 +8,11 @@ use crate::{
 mod actions;
 mod app;
 mod app_state;
+mod connectors;
 mod errors;
 mod key_mode;
 mod settings;
+mod torrent;
 mod tui;
 
 #[tokio::main]
