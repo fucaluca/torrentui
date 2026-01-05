@@ -12,7 +12,7 @@ use crate::{actions::Action, key_mode::KeyMode};
 #[derive(Debug, Default)]
 pub struct KeyBindingsNode {
     pub action: Action,
-    #[allow(dead_code)] // TODO: remove
+    #[allow(dead_code)] // TODO: remove this
     pub description: Option<String>,
     pub next: BTreeMap<KeyString, KeyBindingsNode>,
 }
