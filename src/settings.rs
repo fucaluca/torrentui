@@ -6,8 +6,9 @@ use color_eyre::eyre::Result;
 use config::{Config, File};
 use serde::Deserialize;
 
-use crate::settings::keybindings::KeyBindings;
+use crate::settings::{connectors::Connectors, keybindings::KeyBindings};
 
+pub mod connectors;
 mod defaults;
 pub mod keybindings;
 
@@ -17,6 +18,8 @@ pub struct Settings {
     pub update_torrent_list_interval: u8,
     #[serde(default)]
     pub keybindings: KeyBindings,
+    #[serde(default)]
+    connectors: Connectors,
 }
 
 #[derive(Debug)]

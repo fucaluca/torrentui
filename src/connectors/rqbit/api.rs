@@ -55,6 +55,7 @@ impl ApiBuilder {
     }
 }
 
+#[derive(Debug)]
 pub struct RqbitHttpApi {
     base_url: String,
     client: Client,

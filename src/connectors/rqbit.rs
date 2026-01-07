@@ -1,5 +1,3 @@
-#![cfg_attr(not(test), allow(dead_code))] // TODO: remove this
-
 use std::{path::PathBuf, sync::Arc};
 
 use async_trait::async_trait;
@@ -10,7 +8,7 @@ use crate::{
     torrent::{InfoHash, Source, State, TorrentInfo},
 };
 
-mod api;
+pub mod api;
 mod endpoints;
 
 #[cfg(test)]
@@ -38,7 +36,7 @@ pub enum ApiError {
 
 #[cfg_attr(test, automock)]
 #[async_trait]
-trait Api {
+trait Api: std::fmt::Debug + Sync + Send + 'static {
     async fn start_torrent(&self, info_hash: &InfoHash) -> Result<(), ApiError>;
     async fn pause_torrent(&self, info_hash: &InfoHash) -> Result<(), ApiError>;
     async fn delete_torrent(&self, info_hash: &InfoHash) -> Result<(), ApiError>;
@@ -48,7 +46,7 @@ trait Api {
 }
 
 #[derive(Debug)]
-struct Rqbit<T: Api> {
+pub struct Rqbit<T: Api> {
     name: Arc<String>,
     api: T,
 }
@@ -210,7 +208,7 @@ impl<T: Api> Rqbit<T> {
     }
 }
 
-struct RqbitBuilder<T: Api> {
+pub struct RqbitBuilder<T: Api> {
     name: Option<String>,
     api: Option<T>,
 }
