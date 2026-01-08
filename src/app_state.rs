@@ -1,11 +1,27 @@
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
+
 use color_eyre::eyre::{OptionExt, Result};
 use crossterm::event::KeyEvent;
+use tokio::sync::mpsc;
 
 use crate::{
     actions::Action,
+    connectors::ConnectorError,
     key_mode::KeyMode,
     settings::{Settings, keybindings::KeyBindingsNode},
+    torrent::{InfoHash, Source, TorrentInfo},
 };
+
+pub struct AppState<'a> {
+    keybindings: &'a KeyBindingsNode,
+    keybindings_root: &'a KeyBindingsNode,
+    settings: &'a Settings,
+    torrent_list: BTreeMap<Arc<String>, Vec<TorrentInfo>>,
+    connector_commands: HashMap<String, mpsc::Sender<ConnectorCommands>>,
+}
 
 pub struct AppStateBuilder<'a> {
     settings: &'a Settings,
@@ -40,19 +56,63 @@ impl<'a> AppStateBuilder<'a> {
             keybindings,
             keybindings_root: keybindings,
             settings: self.settings,
+            torrent_list: BTreeMap::new(),
+            connector_commands: HashMap::new(),
         })
     }
 }
 
-pub struct AppState<'a> {
-    keybindings: &'a KeyBindingsNode,
-    keybindings_root: &'a KeyBindingsNode,
-    settings: &'a Settings,
+#[derive(Debug)]
+pub enum ConnectorEvents {
+    AddOk,
+    PauseOk,
+    StartOk,
+    ForgetOk,
+    DeleteOk,
+    UpdateTorrentList(Arc<String>, Vec<TorrentInfo>),
+    Error(ConnectorError),
+}
+
+#[cfg_attr(test, derive(Clone))]
+pub enum ConnectorCommands {
+    Add(Source),
+    Action {
+        kind: ActionKind,
+        info_hash: InfoHash,
+    },
+}
+
+#[cfg_attr(test, derive(Clone))]
+pub enum ActionKind {
+    Pause,
+    Start,
+    Forget,
+    Delete,
 }
 
 impl<'a> AppState<'a> {
     pub fn builder(settings: &'a Settings) -> AppStateBuilder<'a> {
         AppStateBuilder::new(settings)
+    }
+
+    pub fn add_commands_tx(
+        &mut self,
+        connector_name: String,
+        command_tx: mpsc::Sender<ConnectorCommands>,
+    ) {
+        self.connector_commands.insert(connector_name, command_tx);
+    }
+
+    pub fn update_torrent_list(
+        &mut self,
+        connector_name: Arc<String>,
+        torrent_list: Vec<TorrentInfo>,
+    ) {
+        self.torrent_list.insert(connector_name, torrent_list);
+    }
+
+    pub fn torrent_list(&self) -> &BTreeMap<Arc<String>, Vec<TorrentInfo>> {
+        &self.torrent_list
     }
 
     pub fn action(&mut self, key_event: KeyEvent) -> Option<Action> {
@@ -73,7 +133,6 @@ impl<'a> AppState<'a> {
             })
     }
 
-    #[allow(dead_code)] // TODO: remove this
     pub fn key_mode(&mut self, key_mode: KeyMode) -> Result<()> {
         let keybindings = self
             .settings

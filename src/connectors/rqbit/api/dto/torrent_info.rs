@@ -15,8 +15,9 @@ pub struct TorrentInfoResponse {
 
 #[derive(Debug, Deserialize)]
 #[cfg_attr(test, derive(fake::Dummy, serde::Serialize, PartialEq, Eq))]
+#[serde(rename_all = "lowercase")]
 pub enum TorrentStateResponse {
-    Active,
+    Live,
     Paused,
     Error,
 }
@@ -53,7 +54,6 @@ pub struct TorrentSnapshotResponse {
 pub struct PeerStats {
     pub queued: u32,
     pub live: u32,
-    pub seen: u32, // TODO: maybe remove
 }
 
 #[derive(Debug, Deserialize)]
@@ -65,7 +65,7 @@ pub struct TorrentTimeRemainingDurationResponse {
 impl From<TorrentStateResponse> for torrent::State {
     fn from(value: TorrentStateResponse) -> Self {
         match value {
-            TorrentStateResponse::Active => Self::Active,
+            TorrentStateResponse::Live => Self::Active,
             TorrentStateResponse::Paused => Self::Paused,
             TorrentStateResponse::Error => Self::Error,
         }

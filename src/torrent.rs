@@ -3,13 +3,12 @@
 pub mod info_hash;
 pub mod source;
 
-use std::sync::Arc;
-
 pub use info_hash::InfoHash;
+pub use source::Magnet;
 pub use source::Source;
 
 #[derive(Debug)]
-#[cfg_attr(test, derive(fake::Dummy))]
+#[cfg_attr(test, derive(fake::Dummy, Clone))]
 pub struct TorrentInfo {
     pub name: String,
     pub info_hash: InfoHash,
@@ -22,7 +21,6 @@ pub struct TorrentInfo {
     pub download_speed_mpbs: f32,
     pub upload_speed_mpbs: f32,
     pub time_remaining_secs: Option<usize>,
-    pub connector_name: Arc<String>,
     pub peer_queued: u32,
     pub peer_live: u32,
 }

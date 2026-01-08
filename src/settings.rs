@@ -19,7 +19,7 @@ pub struct Settings {
     #[serde(default)]
     pub keybindings: KeyBindings,
     #[serde(default)]
-    connectors: Connectors,
+    pub connectors: Connectors,
 }
 
 #[derive(Debug)]

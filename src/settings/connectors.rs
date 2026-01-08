@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt::Display, time::Duration};
+use std::{collections::BTreeMap, fmt::Display, sync::Arc, time::Duration};
 
 use reqwest::Client;
 use serde::Deserialize;
@@ -7,21 +7,21 @@ use snafu::{ResultExt, Snafu};
 use crate::connectors::{
     Connector,
     rqbit::{
-        Rqbit, RqbitBuilderError, TorrentError,
+        Rqbit, RqbitBuilderError,
         api::{ApiBuilderError, RqbitHttpApiV8},
     },
 };
 
-type ConnectorBox = Box<dyn Connector<Error = TorrentError> + Send + Sync + 'static>;
+type ConnectorBox = Box<dyn Connector + Send + Sync + 'static>;
 
 #[derive(Debug)]
-struct ConfiguredConnector {
-    connector: ConnectorBox,
-    update_interval: Duration,
+pub struct ConfiguredConnector {
+    pub connector: ConnectorBox,
+    pub update_interval: Duration,
 }
 
 #[derive(Debug, Default)]
-pub struct Connectors(BTreeMap<String, ConfiguredConnector>);
+pub struct Connectors(pub BTreeMap<String, Arc<ConfiguredConnector>>);
 
 impl<'de> Deserialize<'de> for Connectors {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -44,7 +44,6 @@ impl<'de> Deserialize<'de> for Connectors {
         }
 
         #[derive(Deserialize, Debug)]
-        // #[serde(tag = "api_version")]
         #[serde(rename_all = "lowercase")]
         enum ApiVersion {
             V8,
@@ -102,7 +101,7 @@ impl<'de> Deserialize<'de> for Connectors {
                         connector: rqbit,
                         update_interval: Duration::from_secs(update_interval),
                     };
-                    Ok((name, configured_connector))
+                    Ok((name, Arc::new(configured_connector)))
                 }
                 ConnectorConfig::Transmission => {
                     todo!("Transmission backend is not implemented yet")

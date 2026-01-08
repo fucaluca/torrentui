@@ -7,10 +7,9 @@ use serde::{Deserialize, de::DeserializeOwned};
 use snafu::{ResultExt, Snafu};
 
 use super::{
-    Api, ApiError, ParseResponseSnafu, ReadTorrentSnafu, RequestSnafu, TorrentInfoRaw,
-    endpoints::Endpoints,
+    Api, ApiError, ParseResponseSnafu, ReadTorrentSnafu, RequestSnafu, endpoints::Endpoints,
 };
-use crate::torrent::{InfoHash, Source};
+use crate::torrent::{InfoHash, Source, TorrentInfo};
 
 pub mod dto;
 
@@ -64,10 +63,13 @@ pub struct RqbitHttpApiV8 {
 #[derive(Debug, Deserialize)]
 #[cfg_attr(test, derive(serde::Serialize))]
 pub struct HttpError {
+    #[allow(dead_code)]
     error_kind: String,
     human_readable: String,
     status: u16,
+    #[allow(dead_code)]
     status_text: String,
+    #[allow(dead_code)]
     #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<String>,
 }
@@ -153,7 +155,7 @@ impl RqbitHttpApiV8 {
     async fn map_torrent_info(
         &self,
         torrent_item: dto::TorrentItemResponse,
-    ) -> Result<TorrentInfoRaw, ApiError> {
+    ) -> Result<TorrentInfo, ApiError> {
         let info_hash = torrent_item.info_hash;
         let torrent_info = self.get_torrent_info(&info_hash).await?;
         let dto::TorrentLiveResponse {
@@ -163,7 +165,7 @@ impl RqbitHttpApiV8 {
             snapshot,
         } = torrent_info.live.unwrap_or_default();
 
-        Ok(TorrentInfoRaw {
+        Ok(TorrentInfo {
             name: torrent_item.name,
             info_hash,
             output_folder: torrent_item.output_folder,
@@ -183,7 +185,7 @@ impl RqbitHttpApiV8 {
 
 #[async_trait]
 impl Api for RqbitHttpApiV8 {
-    async fn get_torrents(&self) -> Result<Vec<TorrentInfoRaw>, ApiError> {
+    async fn get_torrents(&self) -> Result<Vec<TorrentInfo>, ApiError> {
         let torrents = self.get_torrent_list().await?;
         let futures = torrents
             .into_iter()
@@ -640,7 +642,7 @@ mod test {
 
         for (i, torrent) in torrents.iter().enumerate() {
             test_data.push(dto::TorrentInfoResponse {
-                state: dto::TorrentStateResponse::Active,
+                state: dto::TorrentStateResponse::Live,
                 live: Some(dto::TorrentLiveResponse {
                     download_speed: dto::TorrentSpeedResponse { mbps: 12.0 },
                     upload_speed: dto::TorrentSpeedResponse { mbps: 2.0 },

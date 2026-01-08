@@ -8,6 +8,7 @@ use crate::{
 mod actions;
 mod app;
 mod app_state;
+mod connector_worker;
 mod connectors;
 mod errors;
 mod key_mode;

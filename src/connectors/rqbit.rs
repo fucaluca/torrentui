@@ -4,15 +4,15 @@ use async_trait::async_trait;
 use snafu::{ResultExt, Snafu, ensure};
 
 use crate::{
-    connectors::Connector,
-    torrent::{InfoHash, Source, State, TorrentInfo},
+    connectors::{
+        AddTorrentFailedSnafu, BoxedError, Connector, ConnectorError, DeleteTorrentSnafu,
+        ForgetTorrentSnafu, GetListFailedSnafu, PauseTorrentSnafu, StartTorrentSnafu, to_boxed_err,
+    },
+    torrent::{InfoHash, Source, TorrentInfo},
 };
 
 pub mod api;
 mod endpoints;
-
-#[cfg(test)]
-use mockall::automock;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
@@ -34,15 +34,15 @@ pub enum ApiError {
     },
 }
 
-#[cfg_attr(test, automock)]
+#[cfg_attr(test, mockall::automock)]
 #[async_trait]
-trait Api: std::fmt::Debug + Sync + Send + 'static {
+pub trait Api: std::fmt::Debug + Sync + Send + 'static {
     async fn start_torrent(&self, info_hash: &InfoHash) -> Result<(), ApiError>;
     async fn pause_torrent(&self, info_hash: &InfoHash) -> Result<(), ApiError>;
     async fn delete_torrent(&self, info_hash: &InfoHash) -> Result<(), ApiError>;
     async fn forget_torrent(&self, info_hash: &InfoHash) -> Result<(), ApiError>;
     async fn add_torrent(&self, source: Source) -> Result<(), ApiError>;
-    async fn get_torrents(&self) -> Result<Vec<TorrentInfoRaw>, ApiError>;
+    async fn get_torrents(&self) -> Result<Vec<TorrentInfo>, ApiError>;
 }
 
 #[derive(Debug)]
@@ -51,84 +51,28 @@ pub struct Rqbit<T: Api> {
     api: T,
 }
 
-#[derive(Debug, Snafu)]
-pub enum TorrentError {
-    #[snafu(display("Failed to fetch torrent list"))]
-    GetListFailed {
-        source: ApiError,
-        connector_name: Arc<String>,
-        operation: String,
-    },
-    #[snafu(display("Failed to add magnet"))]
-    AddTorrentFailed {
-        source: ApiError,
-        connector_name: Arc<String>,
-        operation: String,
-    },
-    #[snafu(display("Failed to forget torrent {}", info_hash))]
-    ForgetTorrent {
-        source: ApiError,
-        connector_name: Arc<String>,
-        operation: String,
-        info_hash: InfoHash,
-    },
-    #[snafu(display("Failed to delete torrent {}", info_hash))]
-    DeleteTorrent {
-        source: ApiError,
-        connector_name: Arc<String>,
-        operation: String,
-        info_hash: InfoHash,
-    },
-    #[snafu(display("Failed to pause torrent {}", info_hash))]
-    PauseTorrent {
-        source: ApiError,
-        connector_name: Arc<String>,
-        operation: String,
-        info_hash: InfoHash,
-    },
-    #[snafu(display("Failed to resume torrent {}", info_hash))]
-    StartTorrent {
-        source: ApiError,
-        connector_name: Arc<String>,
-        operation: String,
-        info_hash: InfoHash,
-    },
-}
-
 #[async_trait]
 impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
-    type Error = TorrentError;
-
-    async fn get_torrent_list(&self) -> Result<Vec<TorrentInfo>, Self::Error> {
-        let torrents_raw = self.api.get_torrents().await.context(GetListFailedSnafu {
-            connector_name: Arc::clone(&self.name),
-            operation: "Get torrent list",
-        })?;
-        Ok(torrents_raw
-            .into_iter()
-            .map(|raw| TorrentInfo {
-                name: raw.name,
-                info_hash: raw.info_hash,
-                output_folder: raw.output_folder,
-                finished: raw.finished,
-                state: raw.state,
-                downloaded_bytes: raw.downloaded_bytes,
-                uploaded_bytes: raw.uploaded_bytes,
-                total_bytes: raw.total_bytes,
-                download_speed_mpbs: raw.download_speed_mpbs,
-                upload_speed_mpbs: raw.upload_speed_mpbs,
-                time_remaining_secs: raw.time_remaining_secs,
-                connector_name: Arc::clone(&self.name),
-                peer_queued: raw.peer_queued,
-                peer_live: raw.peer_live,
-            })
-            .collect())
+    fn name(&self) -> Arc<String> {
+        Arc::clone(&self.name)
     }
 
-    async fn add_torrent(&self, torrent_source: Source) -> Result<(), TorrentError> {
+    async fn get_torrent_list(&self) -> Result<Vec<TorrentInfo>, ConnectorError> {
+        self.api
+            .get_torrents()
+            .await
+            .map_err(|e| Box::new(e) as BoxedError)
+            .context(GetListFailedSnafu {
+                connector_name: Arc::clone(&self.name),
+                operation: "Get torrent list",
+            })
+    }
+
+    async fn add_torrent(&self, torrent_source: Source) -> Result<(), ConnectorError> {
         self.api
             .add_torrent(torrent_source)
             .await
+            .map_err(|e| Box::new(e) as BoxedError)
             .context(AddTorrentFailedSnafu {
                 connector_name: Arc::clone(&self.name),
                 operation: "Add torrent",
@@ -136,10 +80,11 @@ impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
         Ok(())
     }
 
-    async fn forget_torrent(&self, info_hash: InfoHash) -> Result<(), TorrentError> {
+    async fn forget_torrent(&self, info_hash: InfoHash) -> Result<(), ConnectorError> {
         self.api
             .forget_torrent(&info_hash)
             .await
+            .map_err(|e| Box::new(e) as BoxedError)
             .context(ForgetTorrentSnafu {
                 connector_name: Arc::clone(&self.name),
                 operation: "Forget torrent",
@@ -147,10 +92,11 @@ impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
             })
     }
 
-    async fn delete_torrent(&self, info_hash: InfoHash) -> Result<(), TorrentError> {
+    async fn delete_torrent(&self, info_hash: InfoHash) -> Result<(), ConnectorError> {
         self.api
             .delete_torrent(&info_hash)
             .await
+            .map_err(to_boxed_err)
             .context(DeleteTorrentSnafu {
                 connector_name: Arc::clone(&self.name),
                 operation: "Delete torrent",
@@ -159,10 +105,11 @@ impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
         Ok(())
     }
 
-    async fn pause_torrent(&self, info_hash: InfoHash) -> Result<(), TorrentError> {
+    async fn pause_torrent(&self, info_hash: InfoHash) -> Result<(), ConnectorError> {
         self.api
             .pause_torrent(&info_hash)
             .await
+            .map_err(to_boxed_err)
             .context(PauseTorrentSnafu {
                 connector_name: Arc::clone(&self.name),
                 operation: "Pause torrent",
@@ -171,10 +118,11 @@ impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
         Ok(())
     }
 
-    async fn start_torrent(&self, info_hash: InfoHash) -> Result<(), TorrentError> {
+    async fn start_torrent(&self, info_hash: InfoHash) -> Result<(), ConnectorError> {
         self.api
             .start_torrent(&info_hash)
             .await
+            .map_err(to_boxed_err)
             .context(StartTorrentSnafu {
                 connector_name: Arc::clone(&self.name),
                 operation: "Start torrent",
@@ -182,24 +130,6 @@ impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
             })?;
         Ok(())
     }
-}
-
-#[derive(Debug)]
-#[cfg_attr(test, derive(fake::Dummy, Clone))]
-struct TorrentInfoRaw {
-    pub name: String,
-    pub info_hash: InfoHash,
-    pub output_folder: String,
-    pub finished: bool,
-    pub state: State,
-    pub downloaded_bytes: usize,
-    pub uploaded_bytes: usize,
-    pub total_bytes: usize,
-    pub download_speed_mpbs: f32,
-    pub upload_speed_mpbs: f32,
-    pub time_remaining_secs: Option<usize>,
-    pub peer_queued: u32,
-    pub peer_live: u32,
 }
 
 impl<T: Api> Rqbit<T> {
@@ -255,14 +185,14 @@ mod test {
     use std::sync::Arc;
 
     use super::{
-        ApiError, MockApi, Rqbit, RqbitBuilderError, TorrentError, TorrentInfoRaw,
-        endpoints::Endpoints,
+        ApiError, ConnectorError, MockApi, Rqbit, RqbitBuilderError, endpoints::Endpoints,
     };
     use crate::{
         connectors::Connector,
-        torrent::{InfoHash, Source, source::Magnet},
+        torrent::{InfoHash, Source, TorrentInfo, source::Magnet},
     };
     use assert_matches::assert_matches;
+    use color_eyre::eyre::OptionExt;
     use fake::{Fake, Faker};
     use mockall::predicate;
     use pretty_assertions::assert_eq;
@@ -299,7 +229,7 @@ mod test {
         setup();
 
         let torrent_list = (0..10)
-            .map(|_| Faker.fake::<TorrentInfoRaw>())
+            .map(|_| Faker.fake::<TorrentInfo>())
             .collect::<Vec<_>>();
         let torrent_list_length = torrent_list.len();
 
@@ -367,8 +297,10 @@ mod test {
 
         assert_matches!(
             result,
-            Err(TorrentError::AddTorrentFailed { source, connector_name, operation }) => {
-                assert_matches!(source, ApiError::Api { .. });
+            Err(ConnectorError::AddTorrentFailed { source, connector_name, operation }) => {
+                let api_error = source.downcast_ref::<ApiError>()
+                    .ok_or_eyre("Expected ApiError inside Box")?;
+                assert_matches!(api_error, ApiError::Api { .. });
                 assert_eq!(connector_name, Arc::new(expected_connector_name.into()));
                 assert_eq!(operation, "Add torrent");
             }
@@ -423,8 +355,9 @@ mod test {
 
         assert_matches!(
             response,
-            Err(TorrentError::DeleteTorrent { source, connector_name, operation, info_hash }) => {
-                assert_matches!(source, ApiError::Api { .. });
+            Err(ConnectorError::DeleteTorrent { source, connector_name, operation, info_hash }) => {
+                let api_err = source.downcast_ref::<ApiError>().ok_or_eyre("Expected ApiError inside Box")?;
+                assert_matches!(api_err, ApiError::Api { .. });
                 assert_eq!(connector_name, Arc::new(expected_connector_name.into()));
                 assert_eq!(operation, "Delete torrent");
                 assert_eq!(info_hash, expected_info_hash);
@@ -481,8 +414,9 @@ mod test {
 
         assert_matches!(
             result,
-            Err(TorrentError::ForgetTorrent { source, connector_name, operation, info_hash }) => {
-                assert_matches!(source, ApiError::Api { .. });
+            Err(ConnectorError::ForgetTorrent { source, connector_name, operation, info_hash }) => {
+                let api_error = source.downcast_ref::<ApiError>().ok_or_eyre("Expected ApiError inside Box")?;
+                assert_matches!(api_error, ApiError::Api { .. });
                 assert_eq!(connector_name, Arc::new(expected_connector_name.into()));
                 assert_eq!(operation, "Forget torrent");
                 assert_eq!(info_hash, expected_info_hash);
@@ -539,8 +473,10 @@ mod test {
 
         assert_matches!(
             result,
-            Err(TorrentError::PauseTorrent { source, connector_name, operation, info_hash }) => {
-                assert_matches!(source, ApiError::Api { .. });
+            Err(ConnectorError::PauseTorrent { source, connector_name, operation, info_hash }) => {
+                let api_error = source.downcast_ref::<ApiError>()
+                    .ok_or_eyre("Expected ApiError inside Box")?;
+                assert_matches!(api_error, ApiError::Api { .. });
                 assert_eq!(connector_name, Arc::new(expected_connector_name.into()));
                 assert_eq!(operation, "Pause torrent");
                 assert_eq!(info_hash, expected_info_hash);
@@ -595,8 +531,9 @@ mod test {
 
         assert_matches!(
             result,
-            Err(TorrentError::StartTorrent { source, connector_name, operation, info_hash }) => {
-                assert_matches!(source, ApiError::Api { .. });
+            Err(ConnectorError::StartTorrent { source, connector_name, operation, info_hash }) => {
+                let api_error = source.downcast_ref::<ApiError>().ok_or_eyre("Expected ApiError inside Box")?;
+                assert_matches!(api_error, ApiError::Api { .. });
                 assert_eq!(connector_name, Arc::new(expected_connector_name.into()));
                 assert_eq!(operation, "Start torrent");
                 assert_eq!(info_hash, expected_info_hash);
