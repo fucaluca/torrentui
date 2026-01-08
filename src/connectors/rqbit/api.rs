@@ -44,11 +44,11 @@ impl ApiBuilder {
         self
     }
 
-    pub fn build(self) -> Result<RqbitHttpApi, ApiBuilderError> {
+    pub fn build(self) -> Result<RqbitHttpApiV8, ApiBuilderError> {
         let _ = url::Url::parse(&self.base_url).context(InvalidUrlSnafu {
             base_url: &self.base_url,
         })?;
-        Ok(RqbitHttpApi {
+        Ok(RqbitHttpApiV8 {
             base_url: self.base_url,
             client: self.client,
         })
@@ -56,7 +56,7 @@ impl ApiBuilder {
 }
 
 #[derive(Debug)]
-pub struct RqbitHttpApi {
+pub struct RqbitHttpApiV8 {
     base_url: String,
     client: Client,
 }
@@ -72,7 +72,7 @@ pub struct HttpError {
     id: Option<String>,
 }
 
-impl RqbitHttpApi {
+impl RqbitHttpApiV8 {
     pub fn builder() -> ApiBuilder {
         ApiBuilder::new()
     }
@@ -182,7 +182,7 @@ impl RqbitHttpApi {
 }
 
 #[async_trait]
-impl Api for RqbitHttpApi {
+impl Api for RqbitHttpApiV8 {
     async fn get_torrents(&self) -> Result<Vec<TorrentInfoRaw>, ApiError> {
         let torrents = self.get_torrent_list().await?;
         let futures = torrents
@@ -247,15 +247,15 @@ mod test {
         matchers::{body_bytes, method, path},
     };
 
-    use super::{Api, ApiError, Endpoints, HttpError, InfoHash, RqbitHttpApi, Source, dto};
+    use super::{Api, ApiError, Endpoints, HttpError, InfoHash, RqbitHttpApiV8, Source, dto};
 
-    async fn setup() -> color_eyre::Result<(RqbitHttpApi, MockServer)> {
+    async fn setup() -> color_eyre::Result<(RqbitHttpApiV8, MockServer)> {
         let _result = color_eyre::config::HookBuilder::default()
             .theme(color_eyre::config::Theme::dark())
             .install();
 
         let mock_server = MockServer::start().await;
-        let api = RqbitHttpApi::builder()
+        let api = RqbitHttpApiV8::builder()
             .base_url(mock_server.uri())
             .client(Client::default())
             .build()?;

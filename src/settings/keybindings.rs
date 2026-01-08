@@ -237,7 +237,7 @@ mod tests {
             [keybindings.TorrentList]
             "<q>" = "Quit"
         "#;
-        let config_source = ConfigSource::String(config_toml);
+        let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
         let key_string = KeyString::from(key_event);
@@ -258,7 +258,7 @@ mod tests {
             [keybindings.TorrentList]
             "<q>" = { action = "Quit", description = "Quit" }
         "#;
-        let config_source = ConfigSource::String(config_toml);
+        let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
         let key_string = KeyString::from(key_event);
@@ -281,7 +281,7 @@ mod tests {
             [keybindings.TorrentList]
             "<Ctrl-q>" = "Quit"
         "#;
-        let config_source = ConfigSource::String(config_toml);
+        let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::CONTROL);
         let key_string = KeyString::from(key_event);
@@ -304,7 +304,7 @@ mod tests {
             [keybindings.TorrentList]
             "<Alt-q>" = "Quit"
         "#;
-        let config_source = ConfigSource::String(config_toml);
+        let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::ALT);
         let key_string = KeyString::from(key_event);
@@ -327,7 +327,7 @@ mod tests {
             [keybindings.TorrentList]
             "<Shift-q>" = "Quit"
         "#;
-        let config_source = ConfigSource::String(config_toml);
+        let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
         let key_event = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::SHIFT);
         let key_string = KeyString::from(key_event);
@@ -350,7 +350,7 @@ mod tests {
           [keybindings.TorrentList]
           "<Ctrl-a><Alt-b>" = "AddTorrent"
         "#;
-        let config_source = ConfigSource::String(config_toml);
+        let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
         let key_event1 = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL);
         let key_event2 = KeyEvent::new(KeyCode::Char('b'), KeyModifiers::ALT);
@@ -386,7 +386,7 @@ mod tests {
             "<Ctrl-a>" = { description = "Add" }
             "<Ctrl-a><t>" = { action = "AddTorrent", description = "Torrent" }
         "#;
-        let config_source = ConfigSource::String(config_toml);
+        let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
         let key_event1 = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL);
         let key_event2 = KeyEvent::new(KeyCode::Char('t'), KeyModifiers::NONE);

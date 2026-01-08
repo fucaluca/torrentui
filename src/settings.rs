@@ -26,7 +26,7 @@ pub struct Settings {
 pub enum ConfigSource {
     File(PathBuf),
     #[cfg(test)]
-    String(&'static str),
+    String(String),
 }
 
 impl ConfigSource {
@@ -78,7 +78,7 @@ mod tests {
         let config_toml = r#"
             update_torrent_list_interval = 20
         "#;
-        let config_source = ConfigSource::String(config_toml);
+        let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
 
         assert_eq!(settings.update_torrent_list_interval, 20);
@@ -90,7 +90,7 @@ mod tests {
     fn default_update_torrent_list_interval() -> Result<()> {
         let default_interval = defaults::update_interval();
         let config_toml = "";
-        let config_source = ConfigSource::String(config_toml);
+        let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
 
         assert_eq!(settings.update_torrent_list_interval, default_interval);
