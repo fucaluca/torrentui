@@ -1,6 +1,6 @@
 pub mod rqbit;
 
-use std::{error::Error, sync::Arc};
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use snafu::Snafu;
@@ -19,14 +19,13 @@ pub trait Connector: std::fmt::Debug + Sync + Send {
     fn name(&self) -> Arc<String>;
 }
 
-pub type BoxedError = Box<dyn Error + Send + Sync + 'static>;
+pub type BoxedError = Box<dyn snafu::Error + Send + Sync + 'static>;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 pub enum ConnectorError {
     #[snafu(display("Failed to fetch torrent list"))]
     GetListFailed {
-        #[snafu(source)]
         source: BoxedError,
         connector_name: Arc<String>,
         operation: String,
@@ -65,11 +64,4 @@ pub enum ConnectorError {
         operation: String,
         info_hash: InfoHash,
     },
-}
-
-pub fn to_boxed_err<E>(e: E) -> BoxedError
-where
-    E: Error + Send + Sync + 'static,
-{
-    Box::new(e)
 }

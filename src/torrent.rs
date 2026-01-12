@@ -21,8 +21,9 @@ pub struct TorrentInfo {
     pub download_speed_mpbs: f32,
     pub upload_speed_mpbs: f32,
     pub time_remaining_secs: Option<usize>,
-    pub peer_queued: u32,
     pub peer_live: u32,
+    pub peer_seen: u32,
+    pub peer_queued: u32,
 }
 
 #[derive(Debug)]
@@ -44,5 +45,6 @@ pub struct TorrentItem {
 pub enum State {
     Active,
     Paused,
+    Initializing,
     Error,
 }

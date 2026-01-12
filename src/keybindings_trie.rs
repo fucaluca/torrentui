@@ -1,37 +1,31 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 use color_eyre::eyre::{OptionExt, Result};
 use crossterm::event::KeyEvent;
-use tokio::sync::mpsc;
 
 use crate::{
     actions::Action,
     connectors::ConnectorError,
     key_mode::KeyMode,
-    settings::{Settings, keybindings::KeyBindingsNode},
+    settings::keybindings::{KeyBindings, KeyBindingsNode},
     torrent::{InfoHash, Source, TorrentInfo},
 };
 
-pub struct AppState<'a> {
+pub struct KeyBindingsTrie<'a> {
     keybindings: &'a KeyBindingsNode,
     keybindings_root: &'a KeyBindingsNode,
-    settings: &'a Settings,
-    torrent_list: BTreeMap<Arc<String>, Vec<TorrentInfo>>,
-    connector_commands: HashMap<String, mpsc::Sender<ConnectorCommands>>,
+    pub keybindings_settings: &'a KeyBindings,
 }
 
-pub struct AppStateBuilder<'a> {
-    settings: &'a Settings,
+pub struct KeyBindingsTrieBuilder<'a> {
+    keybindings_settings: &'a KeyBindings,
     key_mode: KeyMode,
 }
 
-impl<'a> AppStateBuilder<'a> {
-    pub fn new(settings: &'a Settings) -> Self {
+impl<'a> KeyBindingsTrieBuilder<'a> {
+    pub fn new(keybindings_settings: &'a KeyBindings) -> Self {
         Self {
-            settings,
+            keybindings_settings,
             key_mode: KeyMode::default(),
         }
     }
@@ -41,23 +35,22 @@ impl<'a> AppStateBuilder<'a> {
         self
     }
 
-    pub fn build(self) -> Result<AppState<'a>> {
+    pub fn build(self) -> Result<KeyBindingsTrie<'a>> {
         let keybindings = self
-            .settings
-            .keybindings
+            .keybindings_settings
             .get(&self.key_mode)
             .ok_or_eyre(format!(
                 "Key mode {:?} not found. Available key modes: {:?}",
                 &self.key_mode,
-                &self.settings.keybindings.keys().collect::<Vec<_>>()
+                &self.keybindings_settings.keys().collect::<Vec<_>>()
             ))?;
 
-        Ok(AppState {
+        Ok(KeyBindingsTrie {
             keybindings,
             keybindings_root: keybindings,
-            settings: self.settings,
-            torrent_list: BTreeMap::new(),
-            connector_commands: HashMap::new(),
+            keybindings_settings: self.keybindings_settings,
+            /* torrent_list: BTreeMap::new(),
+            connector_commands: HashMap::new(), */
         })
     }
 }
@@ -90,29 +83,9 @@ pub enum ActionKind {
     Delete,
 }
 
-impl<'a> AppState<'a> {
-    pub fn builder(settings: &'a Settings) -> AppStateBuilder<'a> {
-        AppStateBuilder::new(settings)
-    }
-
-    pub fn add_commands_tx(
-        &mut self,
-        connector_name: String,
-        command_tx: mpsc::Sender<ConnectorCommands>,
-    ) {
-        self.connector_commands.insert(connector_name, command_tx);
-    }
-
-    pub fn update_torrent_list(
-        &mut self,
-        connector_name: Arc<String>,
-        torrent_list: Vec<TorrentInfo>,
-    ) {
-        self.torrent_list.insert(connector_name, torrent_list);
-    }
-
-    pub fn torrent_list(&self) -> &BTreeMap<Arc<String>, Vec<TorrentInfo>> {
-        &self.torrent_list
+impl<'a> KeyBindingsTrie<'a> {
+    pub fn builder(keybindings_settings: &'a KeyBindings) -> KeyBindingsTrieBuilder<'a> {
+        KeyBindingsTrieBuilder::new(keybindings_settings)
     }
 
     pub fn action(&mut self, key_event: KeyEvent) -> Option<Action> {
@@ -135,13 +108,12 @@ impl<'a> AppState<'a> {
 
     pub fn key_mode(&mut self, key_mode: KeyMode) -> Result<()> {
         let keybindings = self
-            .settings
-            .keybindings
+            .keybindings_settings
             .get(&key_mode)
             .ok_or_eyre(format!(
                 "Key mode {:?} not found. Available key modes {:?}",
                 &key_mode,
-                &self.settings.keybindings.keys().collect::<Vec<_>>()
+                &self.keybindings_settings.keys().collect::<Vec<_>>()
             ))?;
         self.keybindings = keybindings;
         self.keybindings_root = keybindings;
@@ -151,10 +123,10 @@ impl<'a> AppState<'a> {
 
 #[cfg(test)]
 mod test {
-    use super::{Action, AppState, KeyMode, Result};
+    use super::{Action, KeyBindingsTrie, KeyMode, Result};
     use crate::settings::{
         Settings,
-        keybindings::{KeyBindingsNode, test_utils::KeyBindingsTestBuilder},
+        keybindings::{KeyBindings, KeyBindingsNode, test_utils::KeyBindingsTestBuilder},
     };
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use pretty_assertions::assert_eq;
@@ -167,11 +139,13 @@ mod test {
             .action(Action::Quit)
             .build();
 
-        let mut settings = Settings::default();
+        let mut keybindings_settings = KeyBindings::default();
         let key_mode = KeyMode::default();
-        settings.keybindings.insert(key_mode, keybindings_node);
+        keybindings_settings.insert(key_mode, keybindings_node);
 
-        let mut app_state = AppState::builder(&settings).key_mode(key_mode).build()?;
+        let mut app_state = KeyBindingsTrie::builder(&keybindings_settings)
+            .key_mode(key_mode)
+            .build()?;
 
         let action = app_state.action(key_event);
         assert_eq!(action.is_some(), true);
@@ -184,38 +158,38 @@ mod test {
     fn update_key_mode() -> Result<()> {
         let keybindings_node_1 = KeyBindingsNode::default();
         let keybindings_node_2 = KeyBindingsNode::default();
-        let mut settings = Settings::default();
+        let mut keybindings_settings = KeyBindings::default();
         let key_mode1 = KeyMode::default();
         let key_mode2 = KeyMode::AddTorrent;
-        settings.keybindings.insert(key_mode1, keybindings_node_1);
-        settings.keybindings.insert(key_mode2, keybindings_node_2);
+        keybindings_settings.insert(key_mode1, keybindings_node_1);
+        keybindings_settings.insert(key_mode2, keybindings_node_2);
 
-        let mut app_state = AppState::builder(&settings).key_mode(key_mode1).build()?;
+        let mut app_state = KeyBindingsTrie::builder(&keybindings_settings)
+            .key_mode(key_mode1)
+            .build()?;
 
-        assert_eq!(settings.keybindings.contains_key(&key_mode1), true);
+        assert_eq!(keybindings_settings.contains_key(&key_mode1), true);
 
         app_state.key_mode(key_mode2)?;
 
-        assert_eq!(settings.keybindings.contains_key(&key_mode2), true);
+        assert_eq!(keybindings_settings.contains_key(&key_mode2), true);
 
         Ok(())
     }
 
     #[test]
     fn error_when_updating_to_nonexistent_key_mode() -> Result<()> {
-        let mut settings = Settings::default();
+        let mut keybindings_settings = KeyBindings::default();
         let existing_key_mode = KeyMode::default();
         let non_existent_key_mode = KeyMode::AddTorrent;
 
-        settings
-            .keybindings
-            .insert(existing_key_mode, KeyBindingsNode::default());
+        keybindings_settings.insert(existing_key_mode, KeyBindingsNode::default());
 
-        let mut app_state = AppState::builder(&settings)
+        let mut app_state = KeyBindingsTrie::builder(&keybindings_settings)
             .key_mode(existing_key_mode)
             .build()?;
 
-        assert_eq!(settings.keybindings.contains_key(&existing_key_mode), true);
+        assert_eq!(keybindings_settings.contains_key(&existing_key_mode), true);
         assert_eq!(app_state.key_mode(non_existent_key_mode).is_err(), true);
 
         Ok(())
@@ -244,10 +218,12 @@ mod test {
         node1.next.insert(key_event_b.into(), node2);
 
         let key_mode = KeyMode::default();
-        let mut settings = Settings::default();
-        settings.keybindings.insert(key_mode, root);
+        let mut keybindings_settings = KeyBindings::default();
+        keybindings_settings.insert(key_mode, root);
 
-        let mut app_state = AppState::builder(&settings).key_mode(key_mode).build()?;
+        let mut app_state = KeyBindingsTrie::builder(&keybindings_settings)
+            .key_mode(key_mode)
+            .build()?;
 
         assert_eq!(
             std::ptr::eq(app_state.keybindings, app_state.keybindings_root),
@@ -296,11 +272,13 @@ mod test {
         let key_event_b = KeyEvent::new(KeyCode::Char('b'), KeyModifiers::NONE);
         intermediate.next.insert(key_event_b.into(), leaf);
 
-        let mut settings = Settings::default();
+        let mut keybindings_settings = KeyBindings::default();
         let key_mode = KeyMode::default();
-        settings.keybindings.insert(key_mode, root);
+        keybindings_settings.insert(key_mode, root);
 
-        let mut app_state = AppState::builder(&settings).key_mode(key_mode).build()?;
+        let mut app_state = KeyBindingsTrie::builder(&keybindings_settings)
+            .key_mode(key_mode)
+            .build()?;
 
         assert_eq!(
             std::ptr::eq(app_state.keybindings, app_state.keybindings_root),

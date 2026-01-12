@@ -5,8 +5,8 @@ use snafu::{ResultExt, Snafu, ensure};
 
 use crate::{
     connectors::{
-        AddTorrentFailedSnafu, BoxedError, Connector, ConnectorError, DeleteTorrentSnafu,
-        ForgetTorrentSnafu, GetListFailedSnafu, PauseTorrentSnafu, StartTorrentSnafu, to_boxed_err,
+        AddTorrentFailedSnafu, Connector, ConnectorError, DeleteTorrentSnafu, ForgetTorrentSnafu,
+        GetListFailedSnafu, PauseTorrentSnafu, StartTorrentSnafu,
     },
     torrent::{InfoHash, Source, TorrentInfo},
 };
@@ -61,7 +61,7 @@ impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
         self.api
             .get_torrents()
             .await
-            .map_err(|e| Box::new(e) as BoxedError)
+            .boxed()
             .context(GetListFailedSnafu {
                 connector_name: Arc::clone(&self.name),
                 operation: "Get torrent list",
@@ -72,7 +72,7 @@ impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
         self.api
             .add_torrent(torrent_source)
             .await
-            .map_err(|e| Box::new(e) as BoxedError)
+            .boxed()
             .context(AddTorrentFailedSnafu {
                 connector_name: Arc::clone(&self.name),
                 operation: "Add torrent",
@@ -84,7 +84,7 @@ impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
         self.api
             .forget_torrent(&info_hash)
             .await
-            .map_err(|e| Box::new(e) as BoxedError)
+            .boxed()
             .context(ForgetTorrentSnafu {
                 connector_name: Arc::clone(&self.name),
                 operation: "Forget torrent",
@@ -96,7 +96,7 @@ impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
         self.api
             .delete_torrent(&info_hash)
             .await
-            .map_err(to_boxed_err)
+            .boxed()
             .context(DeleteTorrentSnafu {
                 connector_name: Arc::clone(&self.name),
                 operation: "Delete torrent",
@@ -109,7 +109,7 @@ impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
         self.api
             .pause_torrent(&info_hash)
             .await
-            .map_err(to_boxed_err)
+            .boxed()
             .context(PauseTorrentSnafu {
                 connector_name: Arc::clone(&self.name),
                 operation: "Pause torrent",
@@ -122,7 +122,7 @@ impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
         self.api
             .start_torrent(&info_hash)
             .await
-            .map_err(to_boxed_err)
+            .boxed()
             .context(StartTorrentSnafu {
                 connector_name: Arc::clone(&self.name),
                 operation: "Start torrent",

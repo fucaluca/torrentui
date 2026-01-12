@@ -178,6 +178,7 @@ impl RqbitHttpApiV8 {
             upload_speed_mpbs: upload_speed.mbps,
             time_remaining_secs: time_remaining.map(|tr| tr.duration.secs),
             peer_queued: snapshot.peer_stats.queued,
+            peer_seen: snapshot.peer_stats.seen,
             peer_live: snapshot.peer_stats.live,
         })
     }

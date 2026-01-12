@@ -19,6 +19,7 @@ pub struct TorrentInfoResponse {
 pub enum TorrentStateResponse {
     Live,
     Paused,
+    Initializing,
     Error,
 }
 
@@ -54,6 +55,7 @@ pub struct TorrentSnapshotResponse {
 pub struct PeerStats {
     pub queued: u32,
     pub live: u32,
+    pub seen: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -67,6 +69,7 @@ impl From<TorrentStateResponse> for torrent::State {
         match value {
             TorrentStateResponse::Live => Self::Active,
             TorrentStateResponse::Paused => Self::Paused,
+            TorrentStateResponse::Initializing => Self::Initializing,
             TorrentStateResponse::Error => Self::Error,
         }
     }

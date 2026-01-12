@@ -8,7 +8,7 @@ pub fn init() -> Result<()> {
     eyre_hook.install()?;
 
     panic::set_hook(Box::new(move |panic_info| {
-        if let Ok(mut tui) = crate::tui::Tui::new()
+        if let Ok(mut tui) = crate::terminal::Tui::new()
             && let Err(e) = tui.exit()
         {
             tracing::error!("Unable to exit Terminal: {:?}", e);

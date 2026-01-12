@@ -4,7 +4,7 @@ use tokio::{sync::mpsc, task::JoinHandle};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    app_state::{ActionKind, ConnectorCommands, ConnectorEvents},
+    keybindings_trie::{ActionKind, ConnectorCommands, ConnectorEvents},
     settings::connectors::ConfiguredConnector,
 };
 
@@ -136,9 +136,9 @@ mod tests {
     use tokio_util::sync::CancellationToken;
 
     use crate::{
-        app_state::{ActionKind, ConnectorCommands, ConnectorEvents},
         connector_worker::ConnectorWorker,
         connectors::MockConnector,
+        keybindings_trie::{ActionKind, ConnectorCommands, ConnectorEvents},
         settings::connectors::ConfiguredConnector,
         torrent::{self, InfoHash, TorrentInfo},
     };
@@ -160,6 +160,15 @@ mod tests {
             ConnectorCommands::Add(source) => {
                 let mut mock_connector = MockConnector::new();
                 let source_clone = source.clone();
+                // WARNING: Mock both `get_torrent_list()` and `name()`.
+                // The worker's interval timer may fire during tests, calling `get_torrent_list()`
+                // (which uses `name()` internally). Missing mocks cause intermittent test failures.
+                mock_connector
+                    .expect_get_torrent_list()
+                    .returning(|| Ok(vec![Faker.fake::<TorrentInfo>()]));
+                mock_connector
+                    .expect_name()
+                    .return_const(String::from("test_connector"));
                 mock_connector
                     .expect_add_torrent()
                     .with(predicate::eq(source))

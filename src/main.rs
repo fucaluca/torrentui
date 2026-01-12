@@ -7,14 +7,15 @@ use crate::{
 
 mod actions;
 mod app;
-mod app_state;
 mod connector_worker;
 mod connectors;
 mod errors;
 mod key_mode;
+mod keybindings_trie;
 mod settings;
+mod terminal;
 mod torrent;
-mod tui;
+mod ui;
 
 #[tokio::main]
 async fn main() -> Result<()> {
