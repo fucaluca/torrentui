@@ -1,11 +1,12 @@
-#![allow(dead_code)] // TODO: remove this
-
 pub mod info_hash;
 pub mod source;
 
 pub use info_hash::InfoHash;
-pub use source::Magnet;
+use serde::Deserialize;
 pub use source::Source;
+
+#[cfg(test)]
+pub use source::Magnet;
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(fake::Dummy, Clone))]
@@ -23,7 +24,6 @@ pub struct TorrentInfo {
     pub time_remaining_secs: Option<usize>,
     pub peer_live: u32,
     pub peer_seen: u32,
-    pub peer_queued: u32,
 }
 
 #[derive(Debug)]
@@ -40,7 +40,7 @@ pub struct TorrentItem {
     pub output_folder: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Hash, Eq, PartialEq)]
 #[cfg_attr(test, derive(fake::Dummy, Clone))]
 pub enum State {
     Active,

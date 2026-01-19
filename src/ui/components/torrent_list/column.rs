@@ -1,4 +1,4 @@
-use ratatui::{style::Style, text::Line, widgets::Cell};
+use ratatui::{text::Line, widgets::Cell};
 
 #[derive(Default)]
 pub struct Column<'a>(Cell<'a>);
@@ -30,8 +30,8 @@ impl<'a> ColumnBuilder<'a> {
         self
     }
     pub fn build(self) -> Column<'a> {
-        let text = Cell::from(vec![self.top, self.bottom, self.divider]);
-        Column(text)
+        let cell = Cell::from(vec![self.top, self.bottom, self.divider]);
+        Column(cell)
     }
 }
 

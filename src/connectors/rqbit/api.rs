@@ -177,7 +177,6 @@ impl RqbitHttpApiV8 {
             download_speed_mpbs: download_speed.mbps,
             upload_speed_mpbs: upload_speed.mbps,
             time_remaining_secs: time_remaining.map(|tr| tr.duration.secs),
-            peer_queued: snapshot.peer_stats.queued,
             peer_seen: snapshot.peer_stats.seen,
             peer_live: snapshot.peer_stats.live,
         })
@@ -708,10 +707,6 @@ mod test {
             assert_eq!(
                 torrent_info_raw.upload_speed_mpbs,
                 expected_live.upload_speed.mbps
-            );
-            assert_eq!(
-                torrent_info_raw.peer_queued,
-                expected_live.snapshot.peer_stats.queued
             );
             assert_eq!(
                 torrent_info_raw.peer_live,

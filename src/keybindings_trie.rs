@@ -124,9 +124,8 @@ impl<'a> KeyBindingsTrie<'a> {
 #[cfg(test)]
 mod test {
     use super::{Action, KeyBindingsTrie, KeyMode, Result};
-    use crate::settings::{
-        Settings,
-        keybindings::{KeyBindings, KeyBindingsNode, test_utils::KeyBindingsTestBuilder},
+    use crate::settings::keybindings::{
+        KeyBindings, KeyBindingsNode, test_utils::KeyBindingsTestBuilder,
     };
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use pretty_assertions::assert_eq;

@@ -53,7 +53,6 @@ pub struct TorrentSnapshotResponse {
 #[derive(Debug, Deserialize, Default)]
 #[cfg_attr(test, derive(fake::Dummy, serde::Serialize, PartialEq, Eq))]
 pub struct PeerStats {
-    pub queued: u32,
     pub live: u32,
     pub seen: u32,
 }

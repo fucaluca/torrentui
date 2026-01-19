@@ -1,40 +1,46 @@
 use std::sync::Arc;
 
-use ratatui::style::Style;
 use ratatui::widgets::{Block, BorderType, Borders, Row, Table, TableState};
 use ratatui::{buffer::Buffer, layout::Rect, widgets::StatefulWidget};
 
+use crate::settings::Settings;
+use crate::settings::styles::StyleMode;
 use crate::torrent::TorrentInfo;
 use crate::ui::Drawable;
 use crate::ui::components::ComponentError;
+use crate::ui::components::torrent_list::cell::Cell;
 use crate::ui::components::torrent_list::column::Column;
-use crate::ui::components::torrent_list::helpers::CellHelper;
+use crate::ui::torrent_list::style::StyleHelper;
 use crate::ui::torrent_list::table_layout::TableLayout;
 
+mod cell;
 mod column;
-mod helpers;
-mod row;
+mod style;
 mod table_layout;
 
-pub struct TorrentList {
+pub struct TorrentList<'a> {
     table: Table<'static>,
     table_state: TableState,
     table_width: u16,
+    settings: &'a Settings,
+    style_helper: StyleHelper<'a>,
 }
 
-impl Drawable for TorrentList {
+impl Drawable for TorrentList<'_> {
     fn draw(&mut self, buf: &mut Buffer, area: Rect) -> Result<(), ComponentError> {
         StatefulWidget::render(&self.table, area, buf, &mut self.table_state);
         Ok(())
     }
 }
 
-impl TorrentList {
-    pub fn new() -> Self {
+impl<'a> TorrentList<'a> {
+    pub fn new(settings: &'a Settings) -> Self {
         Self {
             table: Table::default(),
             table_state: TableState::default(),
             table_width: 400,
+            settings,
+            style_helper: StyleHelper::new(&settings.styles),
         }
     }
 
@@ -49,12 +55,17 @@ impl TorrentList {
             .into_iter()
             .map(|torrent_info| self.build_row(Arc::clone(&connector_name), torrent_info))
             .collect::<Result<Vec<Row<'static>>, ComponentError>>()?;
-        self.table = Table::new(rows, widths).column_spacing(0).block(
-            Block::new()
-                .title_top(" Torrents ")
-                .borders(Borders::all())
-                .border_type(BorderType::Rounded),
-        );
+
+        self.table = Table::new(rows, widths)
+            .column_spacing(0)
+            .block(
+                Block::new()
+                    .title_top(" Torrents ")
+                    .borders(Borders::all())
+                    .border_type(BorderType::Rounded),
+            )
+            .style(self.style_helper.get_style(&StyleMode::Table, "default"))
+            .row_highlight_style(self.style_helper.get_style(&StyleMode::Table, "highlight"));
         Ok(())
     }
 
@@ -63,8 +74,12 @@ impl TorrentList {
         connector_name: Arc<String>,
         torrent_info: TorrentInfo,
     ) -> Result<Row<'static>, ComponentError> {
-        let cell = CellHelper::new(connector_name, torrent_info, self.table_width);
-        let style = Style::default();
+        let cell = Cell::new(
+            connector_name,
+            torrent_info,
+            self.table_width,
+            self.settings,
+        );
 
         let row = Row::new(vec![
             Column::builder()

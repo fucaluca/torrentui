@@ -6,11 +6,12 @@ use color_eyre::eyre::Result;
 use config::{Config, File};
 use serde::Deserialize;
 
-use crate::settings::{connectors::Connectors, keybindings::KeyBindings};
+use crate::settings::{connectors::Connectors, keybindings::KeyBindings, styles::Styles};
 
 pub mod connectors;
 mod defaults;
 pub mod keybindings;
+pub mod styles;
 
 #[derive(Debug, Deserialize, Default)]
 pub struct Settings {
@@ -20,6 +21,8 @@ pub struct Settings {
     pub keybindings: KeyBindings,
     #[serde(default)]
     pub connectors: Connectors,
+    #[serde(default)]
+    pub styles: Styles,
 }
 
 #[derive(Debug)]

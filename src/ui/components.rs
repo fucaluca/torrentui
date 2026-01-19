@@ -1,12 +1,10 @@
-use std::{any::Any, collections::BTreeMap, sync::Arc};
-
 use ratatui::{buffer::Buffer, layout::Rect};
 use snafu::Snafu;
 
 pub mod torrent_list;
 pub use torrent_list::TorrentList;
 
-use crate::{torrent::TorrentInfo, ui::action::UiAction};
+use crate::settings::Settings;
 
 #[derive(Debug, Snafu)]
 pub enum ComponentError {
@@ -14,14 +12,14 @@ pub enum ComponentError {
     DrawFailed { component: &'static str },
 }
 
-pub struct Components {
-    pub torrent_list: TorrentList,
+pub struct Components<'a> {
+    pub torrent_list: TorrentList<'a>,
 }
 
-impl Components {
-    pub fn new() -> Self {
+impl<'a> Components<'a> {
+    pub fn new(settings: &'a Settings) -> Self {
         Self {
-            torrent_list: TorrentList::new(),
+            torrent_list: TorrentList::new(settings),
         }
     }
 }

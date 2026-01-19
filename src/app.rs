@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use color_eyre::eyre::Result;
 use crossterm::event::KeyEvent;
@@ -15,7 +12,6 @@ use crate::{
     keybindings_trie::{ConnectorCommands, ConnectorEvents, KeyBindingsTrie},
     settings::Settings,
     terminal::{self, Event, Tui},
-    torrent::TorrentInfo,
     ui::{self, Drawable},
 };
 
@@ -24,7 +20,7 @@ pub struct App<'a> {
     keybindings_trie: KeyBindingsTrie<'a>,
     settings: &'a Settings,
     connectors: HashMap<String, mpsc::Sender<ConnectorCommands>>,
-    components: ui::Components,
+    components: ui::Components<'a>,
     tui: Tui,
 }
 impl<'a> App<'a> {
@@ -38,7 +34,7 @@ impl<'a> App<'a> {
             should_quit: false,
             keybindings_trie,
             settings,
-            components: ui::Components::new(),
+            components: ui::Components::new(settings),
             connectors: HashMap::new(),
             tui,
         })
