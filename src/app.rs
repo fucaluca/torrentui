@@ -98,6 +98,8 @@ impl<'a> App<'a> {
                 self.components
                     .torrent_list
                     .update_table(connector_name, torrent_list)?;
+                    .insert_torrents(connector_name, torrent_list);
+                self.components.torrent_list.update_table();
             }
             ConnectorEvents::Error(e) => eprintln!("{e:#?}"),
             _ => {
