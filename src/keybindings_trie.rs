@@ -4,7 +4,7 @@ use color_eyre::eyre::{OptionExt, Result};
 use crossterm::event::KeyEvent;
 
 use crate::{
-    actions::Action,
+    action::Action,
     connectors::ConnectorError,
     key_mode::KeyMode,
     settings::keybindings::{KeyBindings, KeyBindingsNode},
@@ -64,23 +64,6 @@ pub enum ConnectorEvents {
     DeleteOk,
     UpdateTorrentList(Arc<String>, Vec<TorrentInfo>),
     Error(ConnectorError),
-}
-
-#[cfg_attr(test, derive(Clone))]
-pub enum ConnectorCommands {
-    Add(Source),
-    Action {
-        kind: ActionKind,
-        info_hash: InfoHash,
-    },
-}
-
-#[cfg_attr(test, derive(Clone))]
-pub enum ActionKind {
-    Pause,
-    Start,
-    Forget,
-    Delete,
 }
 
 impl<'a> KeyBindingsTrie<'a> {

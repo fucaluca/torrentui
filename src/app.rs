@@ -6,10 +6,11 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    actions::Action,
+    action::Action,
     connector_worker::ConnectorWorker,
+    connectors::ConnectorCommands,
     key_mode::KeyMode,
-    keybindings_trie::{ConnectorCommands, ConnectorEvents, KeyBindingsTrie},
+    keybindings_trie::{ConnectorEvents, KeyBindingsTrie},
     settings::Settings,
     terminal::{self, Event, Tui},
     ui::{self, Drawable},
@@ -106,27 +107,11 @@ impl<'a> App<'a> {
         Ok(())
     }
 
-    /* fn update_torrent_list(&mut self, connector_name) -> color_eyre::Result<()> {
-        let action = UiAction::UpdateTorrentLinst;
-        /* for component in self.components.iter_mut() {
-            component.update(action.clone())?;
-        } */
-        Ok(())
-    } */
-
-    /* fn update_component(&mut self, action: UiAction) -> color_eyre::Result<()> {
-        for component in self.components.iter_mut() {
-            component.update(action)?;
-        }
-        Ok(())
-    } */
-
     async fn handle_key_events(&mut self, key_event: KeyEvent) -> Result<()> {
         if let Some(action) = self.keybindings_trie.action(key_event) {
             match action {
                 Action::Quit => self.should_quit = true,
-                Action::AddTorrent => todo!(),
-                Action::NoOp => {}
+                a => self.components.torrent_list.action(a),
             }
         }
 

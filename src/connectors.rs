@@ -5,7 +5,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use snafu::Snafu;
 
-use crate::torrent::{self, InfoHash};
+use crate::torrent::{self, InfoHash, Source};
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
@@ -64,4 +64,21 @@ pub enum ConnectorError {
         operation: String,
         info_hash: InfoHash,
     },
+}
+
+#[cfg_attr(test, derive(Clone))]
+pub enum ConnectorCommands {
+    Add(Source),
+    Action {
+        kind: ActionKind,
+        info_hash: InfoHash,
+    },
+}
+
+#[cfg_attr(test, derive(Clone))]
+pub enum ActionKind {
+    Pause,
+    Start,
+    Forget,
+    Delete,
 }

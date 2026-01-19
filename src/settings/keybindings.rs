@@ -7,7 +7,7 @@ use color_eyre::eyre::{Result, bail};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use serde::Deserialize;
 
-use crate::{actions::Action, key_mode::KeyMode};
+use crate::{action::Action, key_mode::KeyMode};
 
 #[derive(Debug, Default)]
 pub struct KeyBindingsNode {

@@ -3,6 +3,8 @@ use std::sync::Arc;
 use ratatui::widgets::{Block, BorderType, Borders, Row, Table, TableState};
 use ratatui::{buffer::Buffer, layout::Rect, widgets::StatefulWidget};
 
+use crate::action::Action;
+use crate::connectors::ConnectorCommands;
 use crate::settings::Settings;
 use crate::settings::styles::StyleMode;
 use crate::torrent::TorrentInfo;
@@ -114,5 +116,27 @@ impl<'a> TorrentList<'a> {
         .height(3);
 
         Ok(row)
+    }
+
+    pub fn action(&mut self, action: Action) -> Option<ConnectorCommands> {
+        match action {
+            Action::Up => {
+                self.table_state.select_previous();
+                None
+            }
+            Action::Down => {
+                self.table_state.select_next();
+                None
+            }
+            Action::GotoTop => {
+                self.table_state.select_first();
+                None
+            }
+            Action::GotoBottom => {
+                self.table_state.select_last();
+                None
+            }
+            _ => None,
+        }
     }
 }

@@ -1,7 +1,7 @@
 use crossterm::event::KeyEvent;
 
 use crate::{
-    actions::Action,
+    action::Action,
     settings::keybindings::{KeyBindingsNode, KeyString},
 };
 

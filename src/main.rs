@@ -5,7 +5,7 @@ use crate::{
     settings::{ConfigSource, Settings, get_config_dir},
 };
 
-mod actions;
+mod action;
 mod app;
 mod connector_worker;
 mod connectors;
