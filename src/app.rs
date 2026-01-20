@@ -72,9 +72,7 @@ impl<'a> App<'a> {
         self.tui.terminal.draw(|frame| {
             let area = frame.area();
             let buffer = frame.buffer_mut();
-            if let Err(err) = self.components.torrent_list.draw(buffer, area) {
-                panic!("{err:#?}");
-            };
+            self.components.torrent_list.draw(buffer, area);
         })?;
         Ok(())
     }
@@ -97,7 +95,6 @@ impl<'a> App<'a> {
             ConnectorEvents::UpdateTorrentList(connector_name, torrent_list) => {
                 self.components
                     .torrent_list
-                    .update_table(connector_name, torrent_list)?;
                     .insert_torrents(connector_name, torrent_list);
                 self.components.torrent_list.update_table();
             }

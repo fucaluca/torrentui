@@ -66,6 +66,7 @@ pub enum ConnectorError {
     },
 }
 
+#[derive(Debug)]
 #[cfg_attr(test, derive(Clone))]
 pub enum ConnectorCommands {
     Add(Source),
@@ -75,7 +76,8 @@ pub enum ConnectorCommands {
     },
 }
 
-#[cfg_attr(test, derive(Clone))]
+#[derive(Debug)]
+#[cfg_attr(test, derive(Clone, Eq, PartialEq))]
 pub enum ActionKind {
     Pause,
     Start,

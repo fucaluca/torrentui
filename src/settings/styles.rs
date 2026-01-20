@@ -153,3 +153,63 @@ fn parse_color(s: &str) -> Option<Color> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+    use ratatui::style::{Color, Modifier, Style};
+
+    use crate::settings::styles::{parse_color, parse_style, process_color_string};
+
+    #[test]
+    fn test_parse_style_default() {
+        let style = parse_style("");
+        assert_eq!(style, Style::default());
+    }
+
+    #[test]
+    fn test_parse_style_by_name() {
+        let style = parse_style("dark gray");
+        assert_eq!(style.fg, Some(Color::DarkGray));
+    }
+
+    #[test]
+    fn test_parse_style_foreground() {
+        let style = parse_style("red");
+        assert_eq!(style.fg, Some(Color::Red));
+    }
+
+    #[test]
+    fn test_parse_style_background() {
+        let style = parse_style("on blue");
+        assert_eq!(style.bg, Some(Color::Blue));
+    }
+
+    #[test]
+    fn test_parse_style_modifiers() {
+        let style = parse_style("underline red on blue");
+        assert_eq!(style.fg, Some(Color::Red));
+        assert_eq!(style.bg, Some(Color::Blue));
+    }
+
+    #[test]
+    fn test_process_color_string() {
+        let (color, modifiers) = process_color_string("underline bold inverse gray");
+        assert_eq!(color, "gray");
+        assert!(modifiers.contains(Modifier::UNDERLINED));
+        assert!(modifiers.contains(Modifier::BOLD));
+        assert!(modifiers.contains(Modifier::REVERSED));
+    }
+
+    #[test]
+    fn test_parse_color_rgb() {
+        let color = parse_color("rgb:0,0,0");
+        assert_eq!(color, Some(Color::Rgb(0, 0, 0)));
+    }
+
+    #[test]
+    fn test_parse_color_unknown() {
+        let color = parse_color("unknown");
+        assert_eq!(color, None);
+    }
+}

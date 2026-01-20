@@ -145,7 +145,7 @@ impl<'a> Cell<'a> {
 
     pub fn rate(&self) -> Line<'static> {
         Line::from(format!(
-            "{:.1}",
+            "{:.1} ",
             self.torrent_info.uploaded_bytes as f32 / self.torrent_info.total_bytes as f32
         ))
         .style(self.get_upload_style(&StyleMode::from(&self.torrent_info.state)))

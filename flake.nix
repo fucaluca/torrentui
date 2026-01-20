@@ -66,6 +66,7 @@
           nt
           grcov
           gh
+          meld
 
           # Pre-commit dependencies
           pre-commit
