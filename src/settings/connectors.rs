@@ -5,23 +5,25 @@ use serde::Deserialize;
 use snafu::{ResultExt, Snafu};
 
 use crate::connectors::{
-    Connector,
+    Connector, ConnectorName,
     rqbit::{
         Rqbit, RqbitBuilderError,
         api::{ApiBuilderError, RqbitHttpApiV8},
     },
 };
 
+use super::defaults;
+
 type ConnectorBox = Box<dyn Connector + Send + Sync + 'static>;
 
 #[derive(Debug)]
 pub struct ConfiguredConnector {
     pub connector: ConnectorBox,
-    pub update_interval: Duration,
+    pub update_interval_secs: Duration,
 }
 
 #[derive(Debug, Default)]
-pub struct Connectors(pub BTreeMap<String, Arc<ConfiguredConnector>>);
+pub struct Connectors(pub BTreeMap<ConnectorName, Arc<ConfiguredConnector>>);
 
 impl<'de> Deserialize<'de> for Connectors {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -39,7 +41,7 @@ impl<'de> Deserialize<'de> for Connectors {
             #[snafu(display(r#"Failed to create connector {name}"#))]
             FailedCreateConnector {
                 source: RqbitBuilderError,
-                name: String,
+                name: ConnectorName,
             },
         }
 
@@ -65,7 +67,8 @@ impl<'de> Deserialize<'de> for Connectors {
             Rqbit {
                 url: String,
                 api_version: ApiVersion,
-                update_interval: u64,
+                #[serde(default = "defaults::update_interval_secs")]
+                update_interval_secs: u64,
             },
             Transmission,
         }
@@ -80,7 +83,7 @@ impl<'de> Deserialize<'de> for Connectors {
                 ConnectorConfig::Rqbit {
                     url,
                     api_version,
-                    update_interval,
+                    update_interval_secs,
                 } => {
                     let api = match api_version {
                         ApiVersion::V8 => RqbitHttpApiV8::builder()
@@ -90,16 +93,18 @@ impl<'de> Deserialize<'de> for Connectors {
                             .context(FailedCreateApiSnafu { api_version })?,
                         ApiVersion::V9 => todo!("API version 9 is not implemented yet"),
                     };
+
+                    let name = ConnectorName::new(name);
                     let rqbit: ConnectorBox = Box::new(
                         Rqbit::builder()
-                            .name(name.clone())
+                            .name(ConnectorName::clone(&name))
                             .api(api)
                             .build()
                             .context(FailedCreateConnectorSnafu { name: name.clone() })?,
                     );
                     let configured_connector = ConfiguredConnector {
                         connector: rqbit,
-                        update_interval: Duration::from_secs(update_interval),
+                        update_interval_secs: Duration::from_secs(update_interval_secs),
                     };
                     Ok((name, Arc::new(configured_connector)))
                 }
@@ -115,7 +120,7 @@ impl<'de> Deserialize<'de> for Connectors {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
+    use std::{sync::Arc, time::Duration};
 
     use crate::settings::{ConfigSource, Settings};
 
@@ -123,25 +128,25 @@ mod tests {
 
     #[test]
     fn create_rqbit_connector() -> color_eyre::Result<()> {
-        let connector_name = "localhost";
+        let connector_name = Arc::new("localhost".into());
         let config_toml = format!(
             r#"
             [connectors.{connector_name}]
             kind = "rqbit"
             url = "http://localhost:3030"
             api_version = "v8"
-            update_interval = 5
+            update_interval_secs = 5
         "#
         );
         let config_source = ConfigSource::String(config_toml);
         let settings = Settings::new(config_source)?;
         let connectors = settings.connectors.0;
 
-        assert_eq!(connectors.contains_key(connector_name), true);
+        assert_eq!(connectors.contains_key(&connector_name), true);
         let connector = connectors
-            .get(connector_name)
+            .get(&connector_name)
             .expect(r#"Connector {connector_name} not found"#);
-        assert_eq!(connector.update_interval, Duration::from_secs(5));
+        assert_eq!(connector.update_interval_secs, Duration::from_secs(5));
         Ok(())
     }
 }

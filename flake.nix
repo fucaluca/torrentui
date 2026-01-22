@@ -67,6 +67,7 @@
           grcov
           gh
           meld
+          diffuse
 
           # Pre-commit dependencies
           pre-commit

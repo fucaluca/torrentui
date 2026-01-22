@@ -15,14 +15,14 @@ pub mod styles;
 
 #[derive(Debug, Deserialize, Default)]
 pub struct Settings {
-    #[serde(default = "defaults::update_interval")]
-    pub update_torrent_list_interval: u8,
     #[serde(default)]
     pub keybindings: KeyBindings,
     #[serde(default)]
     pub connectors: Connectors,
     #[serde(default)]
     pub styles: Styles,
+    #[serde(default = "defaults::notification_timeout_millis")]
+    pub notification_timeout_millis: u64,
 }
 
 #[derive(Debug)]
@@ -69,35 +69,4 @@ pub fn get_config_dir() -> PathBuf {
 
 fn get_project_dir() -> Option<ProjectDirs> {
     ProjectDirs::from("com", "fucaluca", env!("CARGO_PKG_NAME"))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{ConfigSource, Result, Settings, defaults};
-    use pretty_assertions::assert_eq;
-
-    #[test]
-    fn get_update_torrent_list_interval() -> Result<()> {
-        let config_toml = r#"
-            update_torrent_list_interval = 20
-        "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
-
-        assert_eq!(settings.update_torrent_list_interval, 20);
-
-        Ok(())
-    }
-
-    #[test]
-    fn default_update_torrent_list_interval() -> Result<()> {
-        let default_interval = defaults::update_interval();
-        let config_toml = "";
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
-
-        assert_eq!(settings.update_torrent_list_interval, default_interval);
-
-        Ok(())
-    }
 }

@@ -1,3 +1,9 @@
+// TODO: Messy code. Needs refactoring, but no time now.
+//       After release, figure out:
+//       - Torrent selection logic
+//       - State validation
+//       - Optimistic UI updates
+//       - Code duplication in pause_toggle
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -13,12 +19,10 @@ use crate::torrent::{State, TorrentInfo};
 use crate::ui::Drawable;
 use crate::ui::components::torrent_list::cell::Cell;
 use crate::ui::components::torrent_list::column::Column;
-use crate::ui::torrent_list::style::StyleHelper;
 use crate::ui::torrent_list::table_layout::TableLayout;
 
 mod cell;
 mod column;
-mod style;
 mod table_layout;
 
 pub struct TorrentList<'a> {
@@ -26,7 +30,6 @@ pub struct TorrentList<'a> {
     table_state: TableState,
     table_width: u16,
     settings: &'a Settings,
-    style_helper: StyleHelper<'a>,
     torrent_list: BTreeMap<ConnectorName, Vec<TorrentInfo>>,
     torrent_ids: Vec<(ConnectorName, usize)>,
 }
@@ -44,15 +47,16 @@ impl<'a> TorrentList<'a> {
             table_state: TableState::default(),
             table_width: 400,
             settings,
-            style_helper: StyleHelper::new(&settings.styles),
             torrent_list: BTreeMap::new(),
             torrent_ids: vec![],
         }
     }
 
-    pub fn update_table(&mut self, connector_name: ConnectorName, torrent_list: Vec<TorrentInfo>) {
+    pub fn insert(&mut self, connector_name: ConnectorName, torrent_list: Vec<TorrentInfo>) {
         self.torrent_list.insert(connector_name, torrent_list);
+    }
 
+    pub fn update_table(&mut self) {
         let mut rows: Vec<Row<'_>> = vec![];
         let mut torrent_ids: Vec<(ConnectorName, usize)> = vec![];
         for (connector_name, torrent_list) in &self.torrent_list {
@@ -72,8 +76,12 @@ impl<'a> TorrentList<'a> {
                     .borders(Borders::all())
                     .border_type(BorderType::Rounded),
             )
-            .style(self.style_helper.get_style(&StyleMode::Table, "default"))
-            .row_highlight_style(self.style_helper.get_style(&StyleMode::Table, "highlight"));
+            .style(self.settings.styles.get_style(&StyleMode::Table, "default"))
+            .row_highlight_style(
+                self.settings
+                    .styles
+                    .get_style(&StyleMode::Table, "highlight"),
+            );
     }
 
     fn build_row(&self, connector_name: ConnectorName, torrent_info: &TorrentInfo) -> Row<'static> {
@@ -130,10 +138,10 @@ impl<'a> TorrentList<'a> {
             Action::Down => self.select_next(),
             Action::GotoTop => self.select_first(),
             Action::GotoBottom => self.select_last(),
-            Action::Forget => self.connector_command(ActionKind::Forget),
-            Action::Delete => self.connector_command(ActionKind::Delete),
-            Action::Pause => self.connector_command(ActionKind::Pause),
-            Action::Start => self.connector_command(ActionKind::Start),
+            Action::Forget => self.forget(),
+            Action::Delete => self.delete(),
+            Action::Pause => self.pause(),
+            Action::Start => self.start(),
             Action::PauseToggle => self.pause_toggle(),
             _ => None,
         }
@@ -156,27 +164,55 @@ impl<'a> TorrentList<'a> {
         None
     }
 
-    fn pause_toggle(&self) -> Option<(ConnectorName, ConnectorCommands)> {
-        self.selected_torrent()
-            .map(|(connector_name, torrent_info)| match torrent_info.state {
-                State::Paused => Some((
-                    ConnectorName::clone(connector_name),
-                    ConnectorCommands::Action {
-                        kind: ActionKind::Start,
-                        info_hash: torrent_info.info_hash.clone(),
-                    },
-                )),
-                _ => Some((
-                    ConnectorName::clone(connector_name),
-                    ConnectorCommands::Action {
-                        kind: ActionKind::Pause,
-                        info_hash: torrent_info.info_hash.clone(),
-                    },
-                )),
-            })?
+    fn forget(&mut self) -> Option<(ConnectorName, ConnectorCommands)> {
+        self.connector_command(ActionKind::Forget)
     }
 
-    fn connector_command(&self, kind: ActionKind) -> Option<(ConnectorName, ConnectorCommands)> {
+    fn delete(&mut self) -> Option<(ConnectorName, ConnectorCommands)> {
+        self.connector_command(ActionKind::Delete)
+    }
+
+    fn pause(&mut self) -> Option<(ConnectorName, ConnectorCommands)> {
+        self.connector_command(ActionKind::Pause)
+    }
+
+    fn start(&mut self) -> Option<(ConnectorName, ConnectorCommands)> {
+        self.connector_command(ActionKind::Start)
+    }
+
+    fn pause_toggle(&mut self) -> Option<(ConnectorName, ConnectorCommands)> {
+        let cmd =
+            self.selected_torrent()
+                .map(|(connector_name, torrent_info)| match torrent_info.state {
+                    State::Paused => {
+                        torrent_info.state = State::Active;
+                        Some((
+                            ConnectorName::clone(connector_name),
+                            ConnectorCommands::Action {
+                                kind: ActionKind::Start,
+                                info_hash: torrent_info.info_hash.clone(),
+                            },
+                        ))
+                    }
+                    _ => {
+                        torrent_info.state = State::Paused;
+                        Some((
+                            ConnectorName::clone(connector_name),
+                            ConnectorCommands::Action {
+                                kind: ActionKind::Pause,
+                                info_hash: torrent_info.info_hash.clone(),
+                            },
+                        ))
+                    }
+                })?;
+        self.update_table();
+        cmd
+    }
+
+    fn connector_command(
+        &mut self,
+        kind: ActionKind,
+    ) -> Option<(ConnectorName, ConnectorCommands)> {
         self.selected_torrent()
             .map(|(connector_name, torrent_info)| {
                 (
@@ -189,14 +225,14 @@ impl<'a> TorrentList<'a> {
             })
     }
 
-    fn selected_torrent(&self) -> Option<(&ConnectorName, &TorrentInfo)> {
+    fn selected_torrent(&mut self) -> Option<(&ConnectorName, &mut TorrentInfo)> {
         self.table_state
             .selected()
             .and_then(|selected| self.torrent_ids.get(selected))
             .and_then(|(connector_name, torrent_idx)| {
                 self.torrent_list
-                    .get(connector_name)
-                    .and_then(|torrent_list| torrent_list.get(*torrent_idx))
+                    .get_mut(connector_name)
+                    .and_then(|torrent_list| torrent_list.get_mut(*torrent_idx))
                     .map(|torrent_info| (connector_name, torrent_info))
             })
     }
@@ -268,7 +304,8 @@ mod tests {
                 self.errored(),
             ];
             self.component
-                .update_table(self.connector_name.clone(), self.torrents.clone());
+                .insert(self.connector_name.clone(), self.torrents.clone());
+            self.component.update_table();
             Ok(self)
         }
 
@@ -400,7 +437,8 @@ mod tests {
 
         helper
             .component
-            .update_table(helper.connector_name.clone(), helper.torrents);
+            .insert(helper.connector_name.clone(), helper.torrents);
+        helper.component.update_table();
 
         let backend = TestBackend::new(82, 5);
         let mut terminal = Terminal::new(backend)?;
@@ -450,7 +488,8 @@ mod tests {
 
         let torrents1 = vec![helper.active(), helper.paused(), helper.uploading()];
         let connector1 = ConnectorName::new("localhost".into());
-        helper.component.update_table(connector1, torrents1);
+        helper.component.insert(connector1, torrents1);
+        helper.component.update_table();
 
         let torrents2 = vec![
             helper.downloading(),
@@ -458,7 +497,8 @@ mod tests {
             helper.errored(),
         ];
         let connector2 = ConnectorName::new("remote".into());
-        helper.component.update_table(connector2, torrents2);
+        helper.component.insert(connector2, torrents2);
+        helper.component.update_table();
 
         let table_width = 82;
         let table_hight = 20;
@@ -540,13 +580,15 @@ mod tests {
         let connector_name1 = ConnectorName::new("localhost".into());
         helper
             .component
-            .update_table(connector_name1.clone(), torrents1.clone());
+            .insert(connector_name1.clone(), torrents1.clone());
+        helper.component.update_table();
 
         let torrents2 = vec![helper.uploading(), helper.initializing(), helper.errored()];
         let connector_name2 = ConnectorName::new("remote".into());
         helper
             .component
-            .update_table(connector_name2.clone(), torrents2.clone());
+            .insert(connector_name2.clone(), torrents2.clone());
+        helper.component.update_table();
 
         let backend = TestBackend::new(82, 5);
         let mut terminal = Terminal::new(backend)?;

@@ -1,13 +1,18 @@
-use ratatui::{text::Line, widgets::Cell};
+use ratatui::{
+    layout::Alignment,
+    text::{Line, Text},
+    widgets::Cell,
+};
 
 #[derive(Default)]
-pub struct Column<'a>(Cell<'a>);
+pub struct Column<'a>(Text<'a>);
 
 #[derive(Default)]
 pub struct ColumnBuilder<'a> {
     top: Line<'a>,
     bottom: Line<'a>,
     divider: Line<'a>,
+    alignment: Alignment,
 }
 
 impl<'a> Column<'a> {
@@ -29,13 +34,17 @@ impl<'a> ColumnBuilder<'a> {
         self.divider = divider;
         self
     }
+    pub fn alignment(mut self, alignment: Alignment) -> Self {
+        self.alignment = alignment;
+        self
+    }
     pub fn build(self) -> Column<'a> {
-        let cell = Cell::from(vec![self.top, self.bottom, self.divider]);
+        let cell = Text::from(vec![self.top, self.bottom, self.divider]).alignment(self.alignment);
         Column(cell)
     }
 }
 
-impl<'a> From<ColumnBuilder<'a>> for Cell<'a> {
+impl<'a> From<ColumnBuilder<'a>> for Text<'a> {
     fn from(builder: ColumnBuilder<'a>) -> Self {
         builder.build().0
     }

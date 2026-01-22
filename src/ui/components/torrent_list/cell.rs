@@ -8,21 +8,20 @@ use crate::{
     ui::{
         assets::{self, Symbols},
         components::torrent_list::table_layout::TableLayout,
-        torrent_list::style::StyleHelper,
     },
 };
 
 pub struct Cell<'a> {
     connector_name: Arc<String>,
-    torrent_info: TorrentInfo,
+    torrent_info: &'a TorrentInfo,
     table_width: u16,
-    style_helper: StyleHelper<'a>,
+    settings: &'a Settings,
 }
 
 impl<'a> Cell<'a> {
     pub fn new(
         connector_name: Arc<String>,
-        torrent_info: TorrentInfo,
+        torrent_info: &'a TorrentInfo,
         table_width: u16,
         settings: &'a Settings,
     ) -> Self {
@@ -30,23 +29,25 @@ impl<'a> Cell<'a> {
             connector_name,
             torrent_info,
             table_width,
-            style_helper: StyleHelper::new(&settings.styles),
+            settings,
         }
     }
 
     fn get_upload_style(&self, mode: &StyleMode) -> Style {
         if self.torrent_info.upload_speed_mpbs > 0.0 {
-            self.style_helper.get_style(&StyleMode::Active, "upload")
+            self.settings.styles.get_style(&StyleMode::Active, "upload")
         } else {
-            self.style_helper.get_style(mode, "default")
+            self.settings.styles.get_style(mode, "default")
         }
     }
 
     fn get_download_style(&self, mode: &StyleMode) -> Style {
         if self.torrent_info.download_speed_mpbs > 0.0 {
-            self.style_helper.get_style(&StyleMode::Active, "download")
+            self.settings
+                .styles
+                .get_style(&StyleMode::Active, "download")
         } else {
-            self.style_helper.get_style(mode, "default")
+            self.settings.styles.get_style(mode, "default")
         }
     }
 
@@ -56,7 +57,7 @@ impl<'a> Cell<'a> {
         status_icon_with_name.push(status_icon);
         status_icon_with_name.push(' ');
         status_icon_with_name.push_str(&self.torrent_info.name);
-        Line::from(status_icon_with_name).style(self.style_helper.get_style(
+        Line::from(status_icon_with_name).style(self.settings.styles.get_style(
             &StyleMode::from(&self.torrent_info.state),
             "status_with_name",
         ))
@@ -67,7 +68,7 @@ impl<'a> Cell<'a> {
         connector_with_folder.push_str(&self.connector_name);
         connector_with_folder.push(':');
         connector_with_folder.push_str(&self.torrent_info.output_folder);
-        Line::from(connector_with_folder).style(self.style_helper.get_style(
+        Line::from(connector_with_folder).style(self.settings.styles.get_style(
             &StyleMode::from(&self.torrent_info.state),
             "connector_with_folder",
         ))
@@ -75,7 +76,8 @@ impl<'a> Cell<'a> {
 
     pub fn peers_icon(&self) -> Line<'static> {
         Line::from(assets::Icons::PEERS.to_string()).style(
-            self.style_helper
+            self.settings
+                .styles
                 .get_style(&StyleMode::from(&self.torrent_info.state), "peers"),
         )
     }
@@ -86,14 +88,16 @@ impl<'a> Cell<'a> {
             self.torrent_info.peer_live, self.torrent_info.peer_seen
         ))
         .style(
-            self.style_helper
+            self.settings
+                .styles
                 .get_style(&StyleMode::from(&self.torrent_info.state), "peers"),
         )
     }
 
     pub fn total_size(&self) -> Line<'static> {
         Line::from(self.size_from_bytes(self.torrent_info.total_bytes)).style(
-            self.style_helper
+            self.settings
+                .styles
                 .get_style(&StyleMode::from(&self.torrent_info.state), "total_size"),
         )
     }
@@ -105,7 +109,8 @@ impl<'a> Cell<'a> {
             String::from(" ─ ")
         };
         Line::from(time_remaining).style(
-            self.style_helper
+            self.settings
+                .styles
                 .get_style(&StyleMode::from(&self.torrent_info.state), "time_remaining"),
         )
     }
@@ -171,14 +176,16 @@ impl<'a> Cell<'a> {
         let fixed_cols_total = TableLayout::fixed_cols_total();
         let divider_length = self.table_width.saturating_sub(fixed_cols_total) - 2;
         Line::from(Symbols::ROW_DIVIDER.repeat(divider_length.into())).style(
-            self.style_helper
+            self.settings
+                .styles
                 .get_style(&StyleMode::from(&self.torrent_info.state), "dividers"),
         )
     }
 
     pub fn peers_divider(&self) -> Line<'static> {
         Line::from(Symbols::ROW_DIVIDER.repeat(TableLayout::PEERS_COLUMN_WIDTH.into())).style(
-            self.style_helper
+            self.settings
+                .styles
                 .get_style(&StyleMode::from(&self.torrent_info.state), "dividers"),
         )
     }
@@ -186,35 +193,40 @@ impl<'a> Cell<'a> {
     pub fn size_with_time_divider(&self) -> Line<'static> {
         Line::from(Symbols::ROW_DIVIDER.repeat(TableLayout::SIZE_WITH_TIME_COLUMN_WIDTH.into()))
             .style(
-                self.style_helper
+                self.settings
+                    .styles
                     .get_style(&StyleMode::from(&self.torrent_info.state), "dividers"),
             )
     }
 
     pub fn ul_dl_icons_divider(&self) -> Line<'static> {
         Line::from(Symbols::ROW_DIVIDER.repeat(TableLayout::UL_DL_ICONS_COLUMN_WIDTH.into())).style(
-            self.style_helper
+            self.settings
+                .styles
                 .get_style(&StyleMode::from(&self.torrent_info.state), "dividers"),
         )
     }
 
     pub fn speed_divider(&self) -> Line<'static> {
         Line::from(Symbols::ROW_DIVIDER.repeat(TableLayout::SPEED_COLUMN_WIDTH.into())).style(
-            self.style_helper
+            self.settings
+                .styles
                 .get_style(&StyleMode::from(&self.torrent_info.state), "dividers"),
         )
     }
 
     pub fn progress_divider(&self) -> Line<'static> {
         Line::from(Symbols::ROW_DIVIDER.repeat(TableLayout::PROGRESS_COLUMN_WIDTH.into())).style(
-            self.style_helper
+            self.settings
+                .styles
                 .get_style(&StyleMode::from(&self.torrent_info.state), "dividers"),
         )
     }
 
     pub fn rate_divider(&self) -> Line<'static> {
         Line::from(Symbols::ROW_DIVIDER.repeat(TableLayout::RATE_COLUMN_WIDTH.into())).style(
-            self.style_helper
+            self.settings
+                .styles
                 .get_style(&StyleMode::from(&self.torrent_info.state), "dividers"),
         )
     }

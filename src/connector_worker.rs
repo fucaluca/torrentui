@@ -30,7 +30,7 @@ impl ConnectorWorker {
         let connector = Arc::clone(&self.connector);
         let cancellation_token = self.cancellation_token.clone();
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(connector.update_interval);
+            let mut interval = tokio::time::interval(connector.update_interval_secs);
             let connector = &connector.connector;
             let connector_name = connector.name();
             loop {
@@ -186,7 +186,7 @@ mod tests {
 
                 let connector = Arc::new(ConfiguredConnector {
                     connector: Box::new(mock_connector),
-                    update_interval: Duration::from_secs(120),
+                    update_interval_secs: Duration::from_secs(120),
                 });
 
                 let cancellation_token = CancellationToken::new();
@@ -248,7 +248,7 @@ mod tests {
 
                 let connector = Arc::new(ConfiguredConnector {
                     connector: Box::new(mock_connector),
-                    update_interval: Duration::from_secs(120),
+                    update_interval_secs: Duration::from_secs(120),
                 });
 
                 let cancellation_token = CancellationToken::new();
@@ -384,7 +384,7 @@ mod tests {
 
         let connector = Arc::new(ConfiguredConnector {
             connector: Box::new(mock_connector),
-            update_interval: Duration::from_millis(50),
+            update_interval_secs: Duration::from_millis(50),
         });
 
         let cancellation_token = CancellationToken::new();

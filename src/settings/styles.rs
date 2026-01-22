@@ -12,6 +12,7 @@ pub enum StyleMode {
     Initializing,
     Error,
     Table,
+    Notification,
     #[default]
     Default,
 }
@@ -36,6 +37,18 @@ impl Deref for Styles {
     type Target = StyleMap;
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl Styles {
+    pub fn get_style(&self, mode: &StyleMode, name: &str) -> Style {
+        *self
+            .get(mode)
+            .and_then(|s| s.get(name).or(s.get("default")))
+            .or(self
+                .get(&StyleMode::default())
+                .and_then(|s| s.get(name).or(s.get("default"))))
+            .unwrap_or(&Style::default())
     }
 }
 

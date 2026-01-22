@@ -5,8 +5,8 @@ use snafu::{ResultExt, Snafu, ensure};
 
 use crate::{
     connectors::{
-        AddTorrentFailedSnafu, Connector, ConnectorError, DeleteTorrentSnafu, ForgetTorrentSnafu,
-        GetListFailedSnafu, PauseTorrentSnafu, StartTorrentSnafu,
+        AddTorrentFailedSnafu, Connector, ConnectorError, ConnectorName, DeleteTorrentSnafu,
+        ForgetTorrentSnafu, GetListFailedSnafu, PauseTorrentSnafu, StartTorrentSnafu,
     },
     torrent::{InfoHash, Source, TorrentInfo},
 };
@@ -139,7 +139,7 @@ impl<T: Api> Rqbit<T> {
 }
 
 pub struct RqbitBuilder<T: Api> {
-    name: Option<String>,
+    name: Option<ConnectorName>,
     api: Option<T>,
 }
 
@@ -150,8 +150,8 @@ impl<T: Api> RqbitBuilder<T> {
             api: None,
         }
     }
-    pub fn name(mut self, name: impl Into<String>) -> Self {
-        self.name = Some(name.into());
+    pub fn name(mut self, name: ConnectorName) -> Self {
+        self.name = Some(name);
         self
     }
     pub fn api(mut self, api: T) -> Self {
@@ -164,7 +164,7 @@ impl<T: Api> RqbitBuilder<T> {
         ensure!(self.api.is_some(), MissingApiSnafu);
 
         Ok(Rqbit {
-            name: Arc::new(self.name.unwrap()),
+            name: self.name.unwrap(),
             api: self.api.unwrap(),
         })
     }
@@ -188,7 +188,7 @@ mod test {
         ApiError, ConnectorError, MockApi, Rqbit, RqbitBuilderError, endpoints::Endpoints,
     };
     use crate::{
-        connectors::Connector,
+        connectors::{Connector, ConnectorName},
         torrent::{InfoHash, Source, TorrentInfo, source::Magnet},
     };
     use assert_matches::assert_matches;
@@ -205,7 +205,7 @@ mod test {
 
     fn create_test_rqbit(mock_api: MockApi) -> color_eyre::Result<Rqbit<MockApi>> {
         Ok(Rqbit::builder()
-            .name("test_rqbit_connector")
+            .name(ConnectorName::new("test_rqbit_connector".into()))
             .api(mock_api)
             .build()?)
     }
@@ -219,7 +219,7 @@ mod test {
     #[test]
     fn builder_missing_api() {
         let rqbit = Rqbit::<MockApi>::builder()
-            .name("test_rqbit_connector")
+            .name(ConnectorName::new("test_rqbit_connector".into()))
             .build();
         assert_matches!(rqbit, Err(RqbitBuilderError::MissingApi));
     }

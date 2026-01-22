@@ -20,6 +20,7 @@ pub trait Connector: std::fmt::Debug + Sync + Send {
 }
 
 pub type BoxedError = Box<dyn snafu::Error + Send + Sync + 'static>;
+pub type ConnectorName = Arc<String>;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
