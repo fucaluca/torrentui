@@ -1,9 +1,6 @@
 use crossterm::event::KeyEvent;
 
-use crate::{
-    action::Action,
-    settings::keybindings::{KeyBindingsNode, KeyString},
-};
+use crate::{action::Action, settings::keybindings::KeyBindingsNode};
 
 pub struct KeyBindingsTestBuilder {
     key_event: Option<KeyEvent>,
@@ -35,11 +32,10 @@ impl KeyBindingsTestBuilder {
         let mut keybindings_root = KeyBindingsNode::default();
         let mut keybindings_node = KeyBindingsNode::default();
         let key_event = self.key_event.expect("Field key_event must be specified");
-        let key_string = KeyString::from(key_event);
 
         keybindings_node.action = self.action.expect("Field action must be specified");
         keybindings_node.description = self.description;
-        keybindings_root.next.insert(key_string, keybindings_node);
+        keybindings_root.next.insert(key_event, keybindings_node);
 
         keybindings_root
     }

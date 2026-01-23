@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use ratatui::layout::Alignment;
+use ratatui::text::Line;
 use ratatui::widgets::{Block, BorderType, Borders, Row, Table, TableState};
 use ratatui::{buffer::Buffer, layout::Rect, widgets::StatefulWidget};
 
@@ -74,6 +75,9 @@ impl<'a> TorrentList<'a> {
                 Block::new()
                     .title_top(" Torrents ")
                     .borders(Borders::all())
+                    .title_bottom(
+                        Line::from(format!(" v{} ", env!("CARGO_PKG_VERSION"))).right_aligned(),
+                    )
                     .border_type(BorderType::Rounded),
             )
             .style(self.settings.styles.get_style(&StyleMode::Table, "default"))
@@ -450,13 +454,18 @@ mod tests {
         })?;
         let buffer = terminal.backend().buffer();
 
-        let mut expected = Buffer::with_lines(vec![
+        let expected_table: Vec<String> = [
             "╭ Torrents ──────────────────────────────────────────────────────────────────────╮",
             "│󰐊 Terminator.mp4                        891.1MB 󰕒   0.30MB/s   774.4MB     0.9 │",
             "│localhost:/home/user/video       12/34    5m 0s  󰇚  12.30MB/s   410.4MB    46.1%│",
             "│────────────────────────────────────────────────────────────────────────────────│",
-            "╰────────────────────────────────────────────────────────────────────────────────╯",
-        ]);
+            "╰──────────────────────────────────────────────────────────────────────── {vers} ╯",
+        ]
+        .iter()
+        .map(|line| line.replace("{vers}", format!("v{}", env!("CARGO_PKG_VERSION")).as_str()))
+        .collect::<Vec<String>>();
+
+        let mut expected = Buffer::with_lines(expected_table);
         expected.set_style(
             Rect::new(0, 0, 82, 5),
             Style::default().fg(Color::Red).bg(Color::Blue),
@@ -512,7 +521,7 @@ mod tests {
         })?;
         let buffer = terminal.backend().buffer();
 
-        let mut expected = Buffer::with_lines(vec![
+        let expected_table = [
             "╭ Torrents ──────────────────────────────────────────────────────────────────────╮",
             "│󰐊 Terminator.mp4                        891.1MB 󰕒   0.30MB/s   774.4MB     0.9 │",
             "│localhost:/home/user/video       12/34    5m 0s  󰇚  12.30MB/s   410.4MB    46.1%│",
@@ -532,8 +541,12 @@ mod tests {
             "│ Errored torrent.test                  891.1MB 󰕒   0.00MB/s        0B     0.0 │",
             "│remote:/home/user/video           0/0       ─    󰇚   0.00MB/s        0B     0.0%│",
             "│────────────────────────────────────────────────────────────────────────────────│",
-            "╰────────────────────────────────────────────────────────────────────────────────╯",
-        ]);
+            "╰──────────────────────────────────────────────────────────────────────── {vers} ╯",
+        ]
+        .iter()
+        .map(|line| line.replace("{vers}", format!("v{}", env!("CARGO_PKG_VERSION")).as_str()));
+
+        let mut expected = Buffer::with_lines(expected_table);
 
         expected.set_style(
             Rect::new(50, 1, 31, 1), // NOTE: uploading area torrent 1

@@ -8,11 +8,11 @@ use crate::{
     connectors::ConnectorError,
     key_mode::KeyMode,
     settings::keybindings::{KeyBindings, KeyBindingsNode},
-    torrent::{InfoHash, Source, TorrentInfo},
+    torrent::TorrentInfo,
 };
 
 pub struct KeyBindingsTrie<'a> {
-    keybindings: &'a KeyBindingsNode,
+    pub keybindings: &'a KeyBindingsNode,
     keybindings_root: &'a KeyBindingsNode,
     pub keybindings_settings: &'a KeyBindings,
 }
@@ -74,7 +74,7 @@ impl<'a> KeyBindingsTrie<'a> {
     pub fn action(&mut self, key_event: KeyEvent) -> Option<Action> {
         self.keybindings
             .next
-            .get(&key_event.into())
+            .get(&key_event)
             .map(|next| {
                 self.keybindings = if next.next.is_empty() {
                     self.keybindings_root
@@ -187,7 +187,7 @@ mod test {
 
         let node1 = root
             .next
-            .get_mut(&key_event_a.into())
+            .get_mut(&key_event_a)
             .expect("Builder should create intermediate node");
 
         let mut node2 = KeyBindingsNode::default();
@@ -245,7 +245,7 @@ mod test {
 
         let intermediate = root
             .next
-            .get_mut(&key_event_a.into())
+            .get_mut(&key_event_a)
             .expect("Builder should create intermediate node");
 
         let mut leaf = KeyBindingsNode::default();

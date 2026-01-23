@@ -13,6 +13,7 @@ pub enum StyleMode {
     Error,
     Table,
     Notification,
+    WhichKey,
     #[default]
     Default,
 }

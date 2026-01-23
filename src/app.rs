@@ -34,9 +34,9 @@ impl<'a> App<'a> {
         let tui = Tui::new()?;
         Ok(Self {
             should_quit: false,
+            components: ui::Components::new(settings),
             keybindings_trie,
             settings,
-            components: ui::Components::new(settings),
             connectors: HashMap::new(),
             tui,
         })
@@ -83,6 +83,7 @@ impl<'a> App<'a> {
             self.components
                 .notifications
                 .draw(buffer, notification_area);
+            self.components.which_key.draw(buffer, content_area);
         })?;
         Ok(())
     }
@@ -124,8 +125,11 @@ impl<'a> App<'a> {
 
     async fn handle_key_events(&mut self, key_event: KeyEvent) -> Result<()> {
         if let Some(action) = self.keybindings_trie.action(key_event) {
+            self.components.which_key.clear();
             match action {
+                Action::NoOp | Action::Help => self.show_help(),
                 Action::Quit => self.should_quit = true,
+                Action::Escape => self.components.which_key.clear(),
                 a => {
                     self.components.notifications.on_user_interaction();
                     if let Some((connector_name, command)) = self.components.torrent_list.action(a)
@@ -136,9 +140,16 @@ impl<'a> App<'a> {
                     }
                 }
             };
+        } else {
+            self.components.which_key.clear();
         }
-
         Ok(())
+    }
+
+    fn show_help(&mut self) {
+        self.components
+            .which_key
+            .update(self.keybindings_trie.keybindings);
     }
 
     async fn handle_tui_events(&mut self, event: terminal::Event) -> Result<()> {

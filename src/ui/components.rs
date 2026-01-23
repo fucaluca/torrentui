@@ -2,15 +2,17 @@ use ratatui::{buffer::Buffer, layout::Rect};
 
 pub mod notifications;
 pub mod torrent_list;
+pub mod which_key;
 
 pub use notifications::Notifications;
 pub use torrent_list::TorrentList;
 
-use crate::settings::Settings;
+use crate::{settings::Settings, ui::which_key::WhichKey};
 
 pub struct Components<'a> {
     pub torrent_list: TorrentList<'a>,
     pub notifications: Notifications<'a>,
+    pub which_key: WhichKey<'a>,
 }
 
 impl<'a> Components<'a> {
@@ -18,6 +20,7 @@ impl<'a> Components<'a> {
         Self {
             torrent_list: TorrentList::new(settings),
             notifications: Notifications::new(settings),
+            which_key: WhichKey::new(settings),
         }
     }
 }

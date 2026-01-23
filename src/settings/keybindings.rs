@@ -1,20 +1,18 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    ops::{Deref, DerefMut},
-};
+use std::ops::{Deref, DerefMut};
 
 use color_eyre::eyre::{Result, bail};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use indexmap::IndexMap;
 use serde::Deserialize;
 
 use crate::{action::Action, key_mode::KeyMode};
 
 #[derive(Debug, Default)]
 pub struct KeyBindingsNode {
+    pub display: String,
     pub action: Action,
-    #[allow(dead_code)] // TODO: remove this
     pub description: Option<String>,
-    pub next: BTreeMap<KeyString, KeyBindingsNode>,
+    pub next: IndexMap<KeyEvent, KeyBindingsNode>,
 }
 
 #[cfg(test)]
@@ -36,19 +34,11 @@ pub enum KeyBindingValue {
     },
 }
 
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub struct KeyString(String);
-impl From<KeyEvent> for KeyString {
-    fn from(key_event: KeyEvent) -> Self {
-        Self(format!("{key_event:?}"))
-    }
-}
-
 #[derive(Debug, Default)]
-pub struct KeyBindings(HashMap<KeyMode, KeyBindingsNode>);
+pub struct KeyBindings(IndexMap<KeyMode, KeyBindingsNode>);
 
 impl Deref for KeyBindings {
-    type Target = HashMap<KeyMode, KeyBindingsNode>;
+    type Target = IndexMap<KeyMode, KeyBindingsNode>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -66,21 +56,21 @@ impl<'de> Deserialize<'de> for KeyBindings {
         D: serde::Deserializer<'de>,
     {
         let parsed_map =
-            HashMap::<KeyMode, BTreeMap<String, KeyBindingValue>>::deserialize(deserializer)?;
+            IndexMap::<KeyMode, IndexMap<String, KeyBindingValue>>::deserialize(deserializer)?;
         let bindings = parsed_map
             .into_iter()
             .map(|(mode, inner_map)| {
-                let mut mode_bindings = KeyBindingsNode::default();
+                let mut root_bindings = KeyBindingsNode::default();
 
                 for (raw, value) in inner_map {
                     let key_events = parse_key_sequence(&raw).map_err(serde::de::Error::custom)?;
 
-                    add_binding_to_tree(&mut mode_bindings, key_events, value);
+                    add_binding_to_tree(&mut root_bindings, key_events, value);
                 }
 
-                Ok((mode, mode_bindings))
+                Ok((mode, root_bindings))
             })
-            .collect::<Result<HashMap<_, _>, D::Error>>()?;
+            .collect::<Result<IndexMap<_, _>, D::Error>>()?;
 
         Ok(KeyBindings(bindings))
     }
@@ -88,7 +78,7 @@ impl<'de> Deserialize<'de> for KeyBindings {
 
 pub fn add_binding_to_tree(
     root: &mut KeyBindingsNode,
-    key_events: Vec<KeyEvent>,
+    key_events: Vec<(KeyEvent, String)>,
     value: KeyBindingValue,
 ) {
     let mut current = root;
@@ -96,13 +86,13 @@ pub fn add_binding_to_tree(
 
     while let Some(key_event) = iter.next() {
         let is_last = iter.peek().is_none();
-        let key = KeyString::from(key_event);
-
         if is_last {
-            let node = KeyBindingsNode::from(value.clone());
-            current.next.insert(key, node);
+            let mut node = KeyBindingsNode::from(value.clone());
+            node.display = key_event.1;
+            current.next.insert(key_event.0, node);
         } else {
-            let node = current.next.entry(key).or_default();
+            let node = current.next.entry(key_event.0).or_default();
+            node.display = key_event.1;
             current = node;
         }
     }
@@ -112,23 +102,25 @@ impl From<KeyBindingValue> for KeyBindingsNode {
     fn from(value: KeyBindingValue) -> Self {
         match value {
             KeyBindingValue::Simple(action) => Self {
+                display: String::new(),
                 action,
                 description: None,
-                next: BTreeMap::new(),
+                next: IndexMap::new(),
             },
             KeyBindingValue::Detailed {
                 action,
                 description,
             } => Self {
+                display: String::new(),
                 action,
                 description,
-                next: BTreeMap::new(),
+                next: IndexMap::new(),
             },
         }
     }
 }
 
-pub fn parse_key_sequence(raw: &str) -> Result<Vec<KeyEvent>> {
+pub fn parse_key_sequence(raw: &str) -> Result<Vec<(KeyEvent, String)>> {
     let mut events = Vec::new();
     let mut remaining = raw;
 
@@ -137,7 +129,7 @@ pub fn parse_key_sequence(raw: &str) -> Result<Vec<KeyEvent>> {
             if let Some(end) = rest.find('>') {
                 let (inside, next) = rest.split_at(end);
                 remaining = &next[1..];
-                events.push(parse_key_event(inside)?);
+                events.push((parse_key_event(inside)?, inside.to_string()));
             } else {
                 bail!("Unclosed '<' in `{}`", raw);
             }
@@ -149,8 +141,7 @@ pub fn parse_key_sequence(raw: &str) -> Result<Vec<KeyEvent>> {
 }
 
 fn parse_key_event(raw: &str) -> Result<KeyEvent> {
-    let raw_lower = raw.to_ascii_lowercase();
-    let (remaining, modifiers) = extract_modifiers(&raw_lower);
+    let (remaining, modifiers) = extract_modifiers(raw);
     parse_key_code_with_modifiers(remaining, modifiers)
 }
 
@@ -225,9 +216,7 @@ pub mod test_utils;
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        Action, KeyBindingsNode, KeyCode, KeyEvent, KeyMode, KeyModifiers, KeyString, Result,
-    };
+    use super::{Action, KeyBindingsNode, KeyCode, KeyEvent, KeyMode, KeyModifiers, Result};
     use crate::settings::{ConfigSource, Settings};
     use pretty_assertions::assert_eq;
 
@@ -240,12 +229,11 @@ mod tests {
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
-        let key_string = KeyString::from(key_event);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .get(&KeyMode::TorrentList)
-            .and_then(|k| k.next.get(&key_string))
-            .unwrap_or_else(|| panic!("KeyString {key_string:?} not found"));
+            .and_then(|k| k.next.get(&key_event))
+            .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
         assert_eq!(keybindings.action, Action::Quit);
         assert_eq!(keybindings.description, None);
         assert_eq!(keybindings.next.is_empty(), true);
@@ -261,12 +249,11 @@ mod tests {
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
-        let key_string = KeyString::from(key_event);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .get(&KeyMode::TorrentList)
-            .and_then(|k| k.next.get(&key_string))
-            .unwrap_or_else(|| panic!("KeyString {key_string:?} not found"));
+            .and_then(|k| k.next.get(&key_event))
+            .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
 
         assert_eq!(keybindings.action, Action::Quit);
         assert_eq!(keybindings.description, Some("Quit".to_string()));
@@ -279,17 +266,16 @@ mod tests {
     fn parse_keys_with_ctrl_modifier() -> Result<()> {
         let config_toml = r#"
             [keybindings.TorrentList]
-            "<Ctrl-q>" = "Quit"
+            "<ctrl-q>" = "Quit"
         "#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::CONTROL);
-        let key_string = KeyString::from(key_event);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .get(&KeyMode::TorrentList)
-            .and_then(|k| k.next.get(&key_string))
-            .unwrap_or_else(|| panic!("KeyString {key_string:?} not found"));
+            .and_then(|k| k.next.get(&key_event))
+            .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
 
         assert_eq!(keybindings.action, Action::Quit);
         assert_eq!(keybindings.description, None);
@@ -302,17 +288,16 @@ mod tests {
     fn parse_keys_with_alt_modifier() -> Result<()> {
         let config_toml = r#"
             [keybindings.TorrentList]
-            "<Alt-q>" = "Quit"
+            "<alt-q>" = "Quit"
         "#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::ALT);
-        let key_string = KeyString::from(key_event);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .get(&KeyMode::TorrentList)
-            .and_then(|k| k.next.get(&key_string))
-            .unwrap_or_else(|| panic!("KeyString {key_string:?} not found"));
+            .and_then(|k| k.next.get(&key_event))
+            .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
 
         assert_eq!(keybindings.action, Action::Quit);
         assert_eq!(keybindings.description, None);
@@ -325,17 +310,16 @@ mod tests {
     fn parse_keys_with_shift_modifier() -> Result<()> {
         let config_toml = r#"
             [keybindings.TorrentList]
-            "<Shift-q>" = "Quit"
+            "<shift-q>" = "Quit"
         "#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
         let key_event = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::SHIFT);
-        let key_string = KeyString::from(key_event);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .get(&KeyMode::TorrentList)
-            .and_then(|k| k.next.get(&key_string))
-            .unwrap_or_else(|| panic!("KeyString {key_string:?} not found"));
+            .and_then(|k| k.next.get(&key_event))
+            .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
 
         assert_eq!(keybindings.action, Action::Quit);
         assert_eq!(keybindings.description, None);
@@ -348,20 +332,18 @@ mod tests {
     fn make_keybindings_tree() -> Result<()> {
         let config_toml = r#"
           [keybindings.TorrentList]
-          "<Ctrl-a><Alt-b>" = "AddTorrent"
+          "<ctrl-a><alt-b>" = "AddTorrent"
         "#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
         let key_event1 = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL);
         let key_event2 = KeyEvent::new(KeyCode::Char('b'), KeyModifiers::ALT);
-        let key_string1 = KeyString::from(key_event1);
-        let key_string2 = KeyString::from(key_event2);
 
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .get(&KeyMode::TorrentList)
-            .and_then(|k| k.next.get(&key_string1))
-            .unwrap_or_else(|| panic!("KeyString {key_string1:?} not found"));
+            .and_then(|k| k.next.get(&key_event1))
+            .unwrap_or_else(|| panic!("KeyEvent {key_event1:#?} not found"));
 
         assert_eq!(keybindings.action, Action::NoOp);
         assert_eq!(keybindings.description, None);
@@ -369,8 +351,8 @@ mod tests {
 
         let next = keybindings
             .next
-            .get(&key_string2)
-            .unwrap_or_else(|| panic!("KeyString {key_string2:?} not found"));
+            .get(&key_event2)
+            .unwrap_or_else(|| panic!("KeyEvent {key_event2:#?} not found"));
 
         assert_eq!(next.action, Action::AddTorrent);
         assert_eq!(next.description, None);
@@ -383,21 +365,19 @@ mod tests {
     fn keybindings_with_common_prefix_share_node() -> Result<()> {
         let config_toml = r#"
             [keybindings.TorrentList]
-            "<Ctrl-a>" = { description = "Add" }
-            "<Ctrl-a><t>" = { action = "AddTorrent", description = "Torrent" }
+            "<ctrl-a>" = { description = "Add" }
+            "<ctrl-a><t>" = { action = "AddTorrent", description = "Torrent" }
         "#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
         let key_event1 = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL);
         let key_event2 = KeyEvent::new(KeyCode::Char('t'), KeyModifiers::NONE);
-        let key_string1 = KeyString::from(key_event1);
-        let key_string2 = KeyString::from(key_event2);
 
         let keybindings = settings
             .keybindings
             .get(&KeyMode::TorrentList)
-            .and_then(|k| k.next.get(&key_string1))
-            .unwrap_or_else(|| panic!("KeyString {key_string1:?} not found"));
+            .and_then(|k| k.next.get(&key_event1))
+            .unwrap_or_else(|| panic!("KeyEvent {key_event1:#?} not found"));
 
         assert_eq!(keybindings.action, Action::NoOp);
         assert_eq!(keybindings.description, Some("Add".to_string()));
@@ -405,8 +385,8 @@ mod tests {
 
         let next = keybindings
             .next
-            .get(&key_string2)
-            .unwrap_or_else(|| panic!("KeyString {key_string2:?} not found"));
+            .get(&key_event2)
+            .unwrap_or_else(|| panic!("KeyEvent {key_event2:#?} not found"));
 
         assert_eq!(next.action, Action::AddTorrent);
         assert_eq!(next.description, Some("Torrent".to_string()));

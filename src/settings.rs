@@ -4,7 +4,9 @@ use directories::ProjectDirs;
 
 use color_eyre::eyre::Result;
 use config::{Config, File};
+use indexmap::IndexMap;
 use serde::Deserialize;
+use serde_with::serde_as;
 
 use crate::settings::{connectors::Connectors, keybindings::KeyBindings, styles::Styles};
 
