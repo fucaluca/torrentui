@@ -18,7 +18,12 @@ pub struct WhichKey<'a> {
 }
 
 impl Drawable for WhichKey<'_> {
-    fn draw(&mut self, buf: &mut ratatui::prelude::Buffer, area: ratatui::prelude::Rect) {
+    fn draw(
+        &mut self,
+        buf: &mut ratatui::prelude::Buffer,
+        area: ratatui::prelude::Rect,
+        settings: &Settings,
+    ) {
         if self.keys.is_empty() {
             return;
         }
@@ -238,7 +243,7 @@ mod tests {
         terminal.draw(|frame| {
             let area = frame.area();
             let buffer = frame.buffer_mut();
-            which_key.draw(buffer, area);
+            which_key.draw(buffer, area, &settings);
         })?;
         let buffer = terminal.backend().buffer();
         assert_eq!(buffer, &expected);
@@ -281,7 +286,7 @@ mod tests {
             .iter()
             .map(|line| line.replace("{vers}", format!("v{}", env!("CARGO_PKG_VERSION")).as_str()))
             .collect::<Vec<String>>();
-        let mut expected = Buffer::with_lines(expected_lines);
+        let expected = Buffer::with_lines(expected_lines);
 
         let width = 12;
         let height = 3;
@@ -291,7 +296,7 @@ mod tests {
         terminal.draw(|frame| {
             let area = frame.area();
             let buffer = frame.buffer_mut();
-            which_key.draw(buffer, area);
+            which_key.draw(buffer, area, &settings);
         })?;
         let buffer = terminal.backend().buffer();
         assert_eq!(buffer, &expected);

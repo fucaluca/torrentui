@@ -1,5 +1,6 @@
-use std::{collections::BTreeMap, fmt::Display, sync::Arc, time::Duration};
+use std::{fmt::Display, ops::Deref, sync::Arc, time::Duration};
 
+use indexmap::IndexMap;
 use reqwest::Client;
 use serde::Deserialize;
 use snafu::{ResultExt, Snafu};
@@ -23,7 +24,14 @@ pub struct ConfiguredConnector {
 }
 
 #[derive(Debug, Default)]
-pub struct Connectors(pub BTreeMap<ConnectorName, Arc<ConfiguredConnector>>);
+pub struct Connectors(pub IndexMap<ConnectorName, Arc<ConfiguredConnector>>);
+
+impl Deref for Connectors {
+    type Target = IndexMap<ConnectorName, Arc<ConfiguredConnector>>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 impl<'de> Deserialize<'de> for Connectors {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -69,11 +77,13 @@ impl<'de> Deserialize<'de> for Connectors {
                 api_version: ApiVersion,
                 #[serde(default = "defaults::update_interval_secs")]
                 update_interval_secs: u64,
+                #[serde(default = "defaults::connector_selected")]
+                selected_by_default: bool,
             },
             Transmission,
         }
 
-        type ConnectorsMap = BTreeMap<String, ConnectorConfig>;
+        type ConnectorsMap = IndexMap<String, ConnectorConfig>;
 
         let connectors_map = ConnectorsMap::deserialize(deserializer)?;
 
@@ -84,6 +94,7 @@ impl<'de> Deserialize<'de> for Connectors {
                     url,
                     api_version,
                     update_interval_secs,
+                    selected_by_default,
                 } => {
                     let api = match api_version {
                         ApiVersion::V8 => RqbitHttpApiV8::builder()
@@ -99,6 +110,7 @@ impl<'de> Deserialize<'de> for Connectors {
                         Rqbit::builder()
                             .name(ConnectorName::clone(&name))
                             .api(api)
+                            .selected(selected_by_default)
                             .build()
                             .context(FailedCreateConnectorSnafu { name: name.clone() })?,
                     );
@@ -140,10 +152,10 @@ mod tests {
         );
         let config_source = ConfigSource::String(config_toml);
         let settings = Settings::new(config_source)?;
-        let connectors = settings.connectors.0;
 
-        assert_eq!(connectors.contains_key(&connector_name), true);
-        let connector = connectors
+        assert_eq!(settings.connectors.contains_key(&connector_name), true);
+        let connector = settings
+            .connectors
             .get(&connector_name)
             .expect(r#"Connector {connector_name} not found"#);
         assert_eq!(connector.update_interval_secs, Duration::from_secs(5));

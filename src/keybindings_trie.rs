@@ -6,7 +6,7 @@ use crossterm::event::KeyEvent;
 use crate::{
     action::Action,
     connectors::ConnectorError,
-    key_mode::KeyMode,
+    mode::Mode,
     settings::keybindings::{KeyBindings, KeyBindingsNode},
     torrent::TorrentInfo,
 };
@@ -19,18 +19,18 @@ pub struct KeyBindingsTrie<'a> {
 
 pub struct KeyBindingsTrieBuilder<'a> {
     keybindings_settings: &'a KeyBindings,
-    key_mode: KeyMode,
+    key_mode: Mode,
 }
 
 impl<'a> KeyBindingsTrieBuilder<'a> {
     pub fn new(keybindings_settings: &'a KeyBindings) -> Self {
         Self {
             keybindings_settings,
-            key_mode: KeyMode::default(),
+            key_mode: Mode::default(),
         }
     }
 
-    pub fn key_mode(mut self, key_mode: KeyMode) -> Self {
+    pub fn key_mode(mut self, key_mode: Mode) -> Self {
         self.key_mode = key_mode;
         self
     }
@@ -49,8 +49,6 @@ impl<'a> KeyBindingsTrieBuilder<'a> {
             keybindings,
             keybindings_root: keybindings,
             keybindings_settings: self.keybindings_settings,
-            /* torrent_list: BTreeMap::new(),
-            connector_commands: HashMap::new(), */
         })
     }
 }
@@ -89,7 +87,7 @@ impl<'a> KeyBindingsTrie<'a> {
             })
     }
 
-    pub fn key_mode(&mut self, key_mode: KeyMode) -> Result<()> {
+    pub fn key_mode(&mut self, key_mode: Mode) -> Result<()> {
         let keybindings = self
             .keybindings_settings
             .get(&key_mode)
@@ -106,7 +104,7 @@ impl<'a> KeyBindingsTrie<'a> {
 
 #[cfg(test)]
 mod test {
-    use super::{Action, KeyBindingsTrie, KeyMode, Result};
+    use super::{Action, KeyBindingsTrie, Mode, Result};
     use crate::settings::keybindings::{
         KeyBindings, KeyBindingsNode, test_utils::KeyBindingsTestBuilder,
     };
@@ -122,7 +120,7 @@ mod test {
             .build();
 
         let mut keybindings_settings = KeyBindings::default();
-        let key_mode = KeyMode::default();
+        let key_mode = Mode::default();
         keybindings_settings.insert(key_mode, keybindings_node);
 
         let mut app_state = KeyBindingsTrie::builder(&keybindings_settings)
@@ -141,8 +139,8 @@ mod test {
         let keybindings_node_1 = KeyBindingsNode::default();
         let keybindings_node_2 = KeyBindingsNode::default();
         let mut keybindings_settings = KeyBindings::default();
-        let key_mode1 = KeyMode::default();
-        let key_mode2 = KeyMode::AddTorrent;
+        let key_mode1 = Mode::default();
+        let key_mode2 = Mode::AddTorrent;
         keybindings_settings.insert(key_mode1, keybindings_node_1);
         keybindings_settings.insert(key_mode2, keybindings_node_2);
 
@@ -162,8 +160,8 @@ mod test {
     #[test]
     fn error_when_updating_to_nonexistent_key_mode() -> Result<()> {
         let mut keybindings_settings = KeyBindings::default();
-        let existing_key_mode = KeyMode::default();
-        let non_existent_key_mode = KeyMode::AddTorrent;
+        let existing_key_mode = Mode::default();
+        let non_existent_key_mode = Mode::AddTorrent;
 
         keybindings_settings.insert(existing_key_mode, KeyBindingsNode::default());
 
@@ -199,7 +197,7 @@ mod test {
         let key_event_b = KeyEvent::new(KeyCode::Char('b'), KeyModifiers::NONE);
         node1.next.insert(key_event_b.into(), node2);
 
-        let key_mode = KeyMode::default();
+        let key_mode = Mode::default();
         let mut keybindings_settings = KeyBindings::default();
         keybindings_settings.insert(key_mode, root);
 
@@ -255,7 +253,7 @@ mod test {
         intermediate.next.insert(key_event_b.into(), leaf);
 
         let mut keybindings_settings = KeyBindings::default();
-        let key_mode = KeyMode::default();
+        let key_mode = Mode::default();
         keybindings_settings.insert(key_mode, root);
 
         let mut app_state = KeyBindingsTrie::builder(&keybindings_settings)

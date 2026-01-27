@@ -17,6 +17,8 @@ pub trait Connector: std::fmt::Debug + Sync + Send {
     async fn pause_torrent(&self, info_hash: torrent::InfoHash) -> Result<(), ConnectorError>;
     async fn start_torrent(&self, info_hash: torrent::InfoHash) -> Result<(), ConnectorError>;
     fn name(&self) -> Arc<String>;
+    fn selected(&self) -> &bool;
+    fn selected_mut(&mut self) -> &mut bool;
 }
 
 pub type BoxedError = Box<dyn snafu::Error + Send + Sync + 'static>;

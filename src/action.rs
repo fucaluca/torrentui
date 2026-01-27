@@ -18,6 +18,8 @@ pub enum Action {
     Delete,
     Help,
     Escape,
+    Input,
+    Backspace,
     #[default]
     NoOp,
 }
@@ -39,6 +41,8 @@ impl Display for Action {
             Self::Help => write!(f, "Help"),
             Self::Escape => write!(f, "Escape"),
             Self::NoOp => write!(f, "NoOp"),
+            Self::Input => write!(f, "Input"),
+            Self::Backspace => write!(f, "Backspace"),
         }
     }
 }

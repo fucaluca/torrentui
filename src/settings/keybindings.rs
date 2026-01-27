@@ -5,7 +5,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use indexmap::IndexMap;
 use serde::Deserialize;
 
-use crate::{action::Action, key_mode::KeyMode};
+use crate::{action::Action, mode::Mode};
 
 #[derive(Debug, Default)]
 pub struct KeyBindingsNode {
@@ -35,10 +35,10 @@ pub enum KeyBindingValue {
 }
 
 #[derive(Debug, Default)]
-pub struct KeyBindings(IndexMap<KeyMode, KeyBindingsNode>);
+pub struct KeyBindings(IndexMap<Mode, KeyBindingsNode>);
 
 impl Deref for KeyBindings {
-    type Target = IndexMap<KeyMode, KeyBindingsNode>;
+    type Target = IndexMap<Mode, KeyBindingsNode>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -56,7 +56,7 @@ impl<'de> Deserialize<'de> for KeyBindings {
         D: serde::Deserializer<'de>,
     {
         let parsed_map =
-            IndexMap::<KeyMode, IndexMap<String, KeyBindingValue>>::deserialize(deserializer)?;
+            IndexMap::<Mode, IndexMap<String, KeyBindingValue>>::deserialize(deserializer)?;
         let bindings = parsed_map
             .into_iter()
             .map(|(mode, inner_map)| {
@@ -216,7 +216,7 @@ pub mod test_utils;
 
 #[cfg(test)]
 mod tests {
-    use super::{Action, KeyBindingsNode, KeyCode, KeyEvent, KeyMode, KeyModifiers, Result};
+    use super::{Action, KeyBindingsNode, KeyCode, KeyEvent, KeyModifiers, Mode, Result};
     use crate::settings::{ConfigSource, Settings};
     use pretty_assertions::assert_eq;
 
@@ -231,7 +231,7 @@ mod tests {
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
-            .get(&KeyMode::TorrentList)
+            .get(&Mode::TorrentList)
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
         assert_eq!(keybindings.action, Action::Quit);
@@ -251,7 +251,7 @@ mod tests {
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
-            .get(&KeyMode::TorrentList)
+            .get(&Mode::TorrentList)
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
 
@@ -273,7 +273,7 @@ mod tests {
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::CONTROL);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
-            .get(&KeyMode::TorrentList)
+            .get(&Mode::TorrentList)
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
 
@@ -295,7 +295,7 @@ mod tests {
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::ALT);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
-            .get(&KeyMode::TorrentList)
+            .get(&Mode::TorrentList)
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
 
@@ -317,7 +317,7 @@ mod tests {
         let key_event = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::SHIFT);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
-            .get(&KeyMode::TorrentList)
+            .get(&Mode::TorrentList)
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
 
@@ -341,7 +341,7 @@ mod tests {
 
         let keybindings: &KeyBindingsNode = settings
             .keybindings
-            .get(&KeyMode::TorrentList)
+            .get(&Mode::TorrentList)
             .and_then(|k| k.next.get(&key_event1))
             .unwrap_or_else(|| panic!("KeyEvent {key_event1:#?} not found"));
 
@@ -375,7 +375,7 @@ mod tests {
 
         let keybindings = settings
             .keybindings
-            .get(&KeyMode::TorrentList)
+            .get(&Mode::TorrentList)
             .and_then(|k| k.next.get(&key_event1))
             .unwrap_or_else(|| panic!("KeyEvent {key_event1:#?} not found"));
 

@@ -10,11 +10,11 @@ use crate::{
     action::Action,
     connector_worker::ConnectorWorker,
     connectors::ConnectorCommands,
-    key_mode::KeyMode,
     keybindings_trie::{ConnectorEvents, KeyBindingsTrie},
+    mode::Mode,
     settings::Settings,
     terminal::{self, Event, Tui},
-    ui::{self, Drawable},
+    ui::{self, Drawable, KeyEventResult},
 };
 
 pub struct App<'a> {
@@ -23,12 +23,14 @@ pub struct App<'a> {
     settings: &'a Settings,
     connectors: HashMap<String, mpsc::Sender<ConnectorCommands>>,
     components: ui::Components<'a>,
+    mode: Mode,
     tui: Tui,
 }
 impl<'a> App<'a> {
     pub fn new(settings: &'a Settings) -> Result<Self> {
+        let mode = Mode::default();
         let keybindings_trie = KeyBindingsTrie::builder(&settings.keybindings)
-            .key_mode(KeyMode::default())
+            .key_mode(mode)
             .build()?;
 
         let tui = Tui::new()?;
@@ -38,6 +40,7 @@ impl<'a> App<'a> {
             keybindings_trie,
             settings,
             connectors: HashMap::new(),
+            mode,
             tui,
         })
     }
@@ -79,11 +82,24 @@ impl<'a> App<'a> {
             let area = frame.area();
             let buffer = frame.buffer_mut();
             let [content_area, notification_area] = main_area.areas(area);
-            self.components.torrent_list.draw(buffer, content_area);
+            match self.mode {
+                Mode::AddTorrent | Mode::Input => {
+                    self.components
+                        .add_torrent
+                        .draw(buffer, content_area, self.settings);
+                }
+                _ => {
+                    self.components
+                        .torrent_list
+                        .draw(buffer, content_area, self.settings);
+                    self.components
+                        .notifications
+                        .draw(buffer, notification_area, self.settings);
+                }
+            };
             self.components
-                .notifications
-                .draw(buffer, notification_area);
-            self.components.which_key.draw(buffer, content_area);
+                .which_key
+                .draw(buffer, content_area, self.settings);
         })?;
         Ok(())
     }
@@ -93,7 +109,7 @@ impl<'a> App<'a> {
         connector_events_tx: mpsc::Sender<ConnectorEvents>,
         cancellation_token: CancellationToken,
     ) {
-        for (connector_name, connector) in self.settings.connectors.0.iter() {
+        for (connector_name, connector) in self.settings.connectors.iter() {
             let (command_tx, command_rx) = mpsc::channel(10);
             self.connectors
                 .insert(connector_name.to_string(), command_tx);
@@ -122,17 +138,80 @@ impl<'a> App<'a> {
     fn notify(&mut self, n: ConnectorEvents) {
         self.components.notifications.notify(n);
     }
-
     async fn handle_key_events(&mut self, key_event: KeyEvent) -> Result<()> {
+        let result = self.components.add_torrent.key_event(key_event);
+        match result {
+            KeyEventResult::Consumed => {}
+            KeyEventResult::Ignored => self.handle_command(key_event).await?,
+        }
+        Ok(())
+    }
+
+    async fn handle_command(&mut self, key_event: KeyEvent) -> Result<()> {
         if let Some(action) = self.keybindings_trie.action(key_event) {
             self.components.which_key.clear();
             match action {
-                Action::NoOp | Action::Help => self.show_help(),
+                Action::Help | Action::NoOp => self.show_help(),
                 Action::Quit => self.should_quit = true,
-                Action::Escape => self.components.which_key.clear(),
+                Action::Input => self.components.add_torrent.enable_input(),
+                Action::AddTorrent => {
+                    self.mode = Mode::AddTorrent;
+                    self.keybindings_trie.key_mode(self.mode)?;
+                }
+                Action::Escape => {
+                    self.mode = Mode::default();
+                    self.keybindings_trie.key_mode(self.mode)?;
+                    self.components.which_key.clear();
+                }
+
                 a => {
                     self.components.notifications.on_user_interaction();
-                    if let Some((connector_name, command)) = self.components.torrent_list.action(a)
+                    let command = self.components.torrent_list.action(a);
+
+                    if let Some((connector_name, command)) = command
+                        && let Some(connector) =
+                            self.connectors.get_mut(&connector_name.to_string())
+                    {
+                        connector.send(command).await?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /* async fn handle_key_events(&mut self, key_event: KeyEvent) -> Result<()> {
+        if let Some(action) = self.keybindings_trie.action(key_event) {
+            self.components.which_key.clear();
+            match action {
+                Action::Input => {
+                    self.mode = Mode::Input;
+                }
+                Action::NoOp | Action::Help => self.show_help(),
+                Action::Quit => self.should_quit = true,
+                Action::Escape => {
+                    self.mode = Mode::default();
+                    self.keybindings_trie.key_mode(self.mode)?;
+                    self.components.which_key.clear();
+                }
+                Action::AddTorrent => {
+                    self.mode = Mode::AddTorrent;
+                    self.keybindings_trie.key_mode(self.mode)?;
+                }
+                a => {
+                    self.components.notifications.on_user_interaction();
+                    let command = self.components.torrent_list.action(a);
+
+                    if let Some((connector_name, command)) = command
+                        && let Some(connector) =
+                            self.connectors.get_mut(&connector_name.to_string())
+                    {
+                        connector.send(command).await?;
+                    }
+
+                    let command = self.components.add_torrent.action(a);
+
+                    if let Some((connector_name, command)) = command
                         && let Some(connector) =
                             self.connectors.get_mut(&connector_name.to_string())
                     {
@@ -141,10 +220,12 @@ impl<'a> App<'a> {
                 }
             };
         } else {
+            self.components.add_torrent.input(key_event.code);
             self.components.which_key.clear();
         }
+
         Ok(())
-    }
+    } */
 
     fn show_help(&mut self) {
         self.components

@@ -26,28 +26,40 @@ mod cell;
 mod column;
 mod table_layout;
 
-pub struct TorrentList<'a> {
-    table: Table<'static>,
+pub struct TorrentList {
     table_state: TableState,
-    table_width: u16,
-    settings: &'a Settings,
     torrent_list: BTreeMap<ConnectorName, Vec<TorrentInfo>>,
     torrent_ids: Vec<(ConnectorName, usize)>,
 }
 
-impl Drawable for TorrentList<'_> {
-    fn draw(&mut self, buf: &mut Buffer, area: Rect) {
-        StatefulWidget::render(&self.table, area, buf, &mut self.table_state);
+impl Drawable for TorrentList {
+    fn draw(&mut self, buf: &mut Buffer, area: Rect, settings: &Settings) {
+        let rows = self.torrent_ids.iter().filter_map(|(connector_name, idx)| {
+            self.torrent_list
+                .get(connector_name)?
+                .get(*idx)
+                .map(|torrent_info| {
+                    self.build_row(
+                        Arc::clone(connector_name),
+                        torrent_info,
+                        settings,
+                        area.width,
+                    )
+                })
+        });
+        let table = Table::new(rows, TableLayout::widths())
+            .column_spacing(0)
+            .block(self.create_block())
+            .style(settings.styles.get_style(&StyleMode::Table, "default"))
+            .row_highlight_style(settings.styles.get_style(&StyleMode::Table, "highlight"));
+        StatefulWidget::render(table, area, buf, &mut self.table_state);
     }
 }
 
-impl<'a> TorrentList<'a> {
-    pub fn new(settings: &'a Settings) -> Self {
+impl TorrentList {
+    pub fn new() -> Self {
         Self {
-            table: Table::default(),
             table_state: TableState::default(),
-            table_width: 400,
-            settings,
             torrent_list: BTreeMap::new(),
             torrent_ids: vec![],
         }
@@ -58,11 +70,19 @@ impl<'a> TorrentList<'a> {
     }
 
     pub fn update_table(&mut self) {
-        let mut rows: Vec<Row<'_>> = vec![];
-        let mut torrent_ids: Vec<(ConnectorName, usize)> = vec![];
+        self.torrent_ids = self
+            .torrent_list
+            .iter()
+            .flat_map(|(connector_name, torrent_list)| {
+                (0..torrent_list.len()).map(|i| (Arc::clone(connector_name), i))
+            })
+            .collect();
+        /* let torrents_count = self.torrent_list.len();
+        let mut rows: Vec<Row<'_>> = Vec::with_capacity(torrents_count);
+        let mut torrent_ids: Vec<(ConnectorName, usize)> = Vec::with_capacity(torrents_count);
         for (connector_name, torrent_list) in &self.torrent_list {
             for (i, torrent_info) in torrent_list.iter().enumerate() {
-                let row = self.build_row(Arc::clone(connector_name), torrent_info);
+                let row = self.build_row(Arc::clone(connector_name), torrent_info, settings);
                 rows.push(row);
                 torrent_ids.push((Arc::clone(connector_name), i));
             }
@@ -80,21 +100,18 @@ impl<'a> TorrentList<'a> {
                     )
                     .border_type(BorderType::Rounded),
             )
-            .style(self.settings.styles.get_style(&StyleMode::Table, "default"))
-            .row_highlight_style(
-                self.settings
-                    .styles
-                    .get_style(&StyleMode::Table, "highlight"),
-            );
+            .style(settings.styles.get_style(&StyleMode::Table, "default"))
+            .row_highlight_style(settings.styles.get_style(&StyleMode::Table, "highlight")); */
     }
 
-    fn build_row(&self, connector_name: ConnectorName, torrent_info: &TorrentInfo) -> Row<'static> {
-        let cell = Cell::new(
-            connector_name,
-            torrent_info,
-            self.table_width,
-            self.settings,
-        );
+    fn build_row(
+        &self,
+        connector_name: ConnectorName,
+        torrent_info: &TorrentInfo,
+        settings: &Settings,
+        width: u16,
+    ) -> Row<'static> {
+        let cell = Cell::new(connector_name, torrent_info, width, settings);
 
         Row::new(vec![
             Column::builder()
@@ -134,6 +151,14 @@ impl<'a> TorrentList<'a> {
                 .alignment(Alignment::Right),
         ])
         .height(3)
+    }
+
+    fn create_block(&self) -> Block<'static> {
+        Block::new()
+            .title_top(" Torrents ")
+            .borders(Borders::all())
+            .title_bottom(Line::from(format!(" v{} ", env!("CARGO_PKG_VERSION"))).right_aligned())
+            .border_type(BorderType::Rounded)
     }
 
     pub fn action(&mut self, action: Action) -> Option<(ConnectorName, ConnectorCommands)> {
@@ -267,15 +292,15 @@ mod tests {
 
     use pretty_assertions::assert_eq;
 
-    struct TestHelper<'a> {
+    struct TestHelper {
         torrent_info: TorrentInfo,
         torrents: Vec<TorrentInfo>,
-        component: TorrentList<'a>,
+        component: TorrentList,
         connector_name: ConnectorName,
     }
 
-    impl<'a> TestHelper<'a> {
-        fn new(settings: &'a Settings) -> Self {
+    impl TestHelper {
+        fn new() -> Self {
             Self {
                 torrent_info: TorrentInfo {
                     name: "Terminator.mp4".into(),
@@ -292,7 +317,7 @@ mod tests {
                     peer_live: 12,
                     peer_seen: 34,
                 },
-                component: TorrentList::new(settings),
+                component: TorrentList::new(),
                 connector_name: ConnectorName::new("localhost".into()),
                 torrents: vec![],
             }
@@ -313,20 +338,20 @@ mod tests {
             Ok(self)
         }
 
-        fn draw(mut self) -> color_eyre::Result<Self> {
+        fn draw(mut self, settings: &Settings) -> color_eyre::Result<Self> {
             let backend = TestBackend::new(82, 5);
             let mut terminal = Terminal::new(backend)?;
 
             terminal.draw(|frame| {
                 let area = frame.area();
                 let buffer = frame.buffer_mut();
-                self.component.draw(buffer, area);
+                self.component.draw(buffer, area, settings);
             })?;
             Ok(self)
         }
 
-        fn setup(self) -> color_eyre::Result<Self> {
-            self.update_table()?.draw()
+        fn setup(self, settings: &Settings) -> color_eyre::Result<Self> {
+            self.update_table()?.draw(settings)
         }
 
         fn active(&self) -> TorrentInfo {
@@ -405,14 +430,19 @@ mod tests {
         let config_toml = r#""#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
-        let helper = TestHelper::new(&settings).update_table()?;
+        let helper = TestHelper::new().update_table()?;
 
-        let row = helper
-            .component
-            .build_row(helper.connector_name.clone(), &helper.active());
+        let width = 80;
+        let height = 3;
+        let row = helper.component.build_row(
+            helper.connector_name.clone(),
+            &helper.active(),
+            &settings,
+            width + 2,
+        );
         let table = Table::new(vec![row], TableLayout::widths()).column_spacing(0);
 
-        let backend = TestBackend::new(80, 3);
+        let backend = TestBackend::new(width, height);
         let mut terminal = Terminal::new(backend)?;
         terminal.draw(|frame| {
             frame.render_widget(table, frame.area());
@@ -437,7 +467,7 @@ mod tests {
         "#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
-        let mut helper = TestHelper::new(&settings).update_table()?;
+        let mut helper = TestHelper::new().update_table()?;
 
         helper
             .component
@@ -450,7 +480,7 @@ mod tests {
         terminal.draw(|frame| {
             let area = frame.area();
             let buffer = frame.buffer_mut();
-            helper.component.draw(buffer, area);
+            helper.component.draw(buffer, area, &settings);
         })?;
         let buffer = terminal.backend().buffer();
 
@@ -493,7 +523,7 @@ mod tests {
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
 
-        let mut helper = TestHelper::new(&settings);
+        let mut helper = TestHelper::new();
 
         let torrents1 = vec![helper.active(), helper.paused(), helper.uploading()];
         let connector1 = ConnectorName::new("localhost".into());
@@ -517,7 +547,7 @@ mod tests {
         terminal.draw(|frame| {
             let area = frame.area();
             let buffer = frame.buffer_mut();
-            helper.component.draw(buffer, area);
+            helper.component.draw(buffer, area, &settings);
         })?;
         let buffer = terminal.backend().buffer();
 
@@ -587,7 +617,7 @@ mod tests {
         let config_toml = r#""#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
-        let mut helper = TestHelper::new(&settings);
+        let mut helper = TestHelper::new();
 
         let torrents1 = vec![helper.active(), helper.paused(), helper.downloading()];
         let connector_name1 = ConnectorName::new("localhost".into());
@@ -609,7 +639,7 @@ mod tests {
         terminal.draw(|frame| {
             let area = frame.area();
             let buffer = frame.buffer_mut();
-            helper.component.draw(buffer, area);
+            helper.component.draw(buffer, area, &settings);
         })?;
 
         let mut all_torrents = torrents1.clone();
@@ -665,7 +695,7 @@ mod tests {
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
 
-        let mut helper = TestHelper::new(&settings).setup()?;
+        let mut helper = TestHelper::new().setup(&settings)?;
         let action_kind = ActionKind::Forget;
 
         helper.component.table_state.select(Some(1));
@@ -687,7 +717,7 @@ mod tests {
         let config_toml = r#""#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
-        let mut helper = TestHelper::new(&settings).setup()?;
+        let mut helper = TestHelper::new().setup(&settings)?;
 
         helper.component.table_state.select(Some(1));
 
@@ -722,7 +752,7 @@ mod tests {
         let config_toml = r#""#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
-        let mut helper = TestHelper::new(&settings).setup()?;
+        let mut helper = TestHelper::new().setup(&settings)?;
 
         let result = helper.component.select_first();
         assert_eq!(result.is_none(), true);
@@ -760,7 +790,7 @@ mod tests {
         let config_toml = r#""#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
-        let mut helper = TestHelper::new(&settings).setup()?;
+        let mut helper = TestHelper::new().setup(&settings)?;
 
         let result = helper.component.select_first();
         assert_eq!(result.is_none(), true);
@@ -801,7 +831,7 @@ mod tests {
         let config_toml = r#""#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
-        let mut helper = TestHelper::new(&settings).setup()?;
+        let mut helper = TestHelper::new().setup(&settings)?;
 
         helper.component.table_state.select(Some(3));
 
@@ -845,7 +875,7 @@ mod tests {
         let config_toml = r#""#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
-        let mut helper = TestHelper::new(&settings).setup()?;
+        let mut helper = TestHelper::new().setup(&settings)?;
 
         std::thread::sleep(Duration::from_secs(2));
         let result = helper.component.select_last();

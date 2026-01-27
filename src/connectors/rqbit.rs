@@ -49,12 +49,19 @@ pub trait Api: std::fmt::Debug + Sync + Send + 'static {
 pub struct Rqbit<T: Api> {
     name: Arc<String>,
     api: T,
+    selected: bool,
 }
 
 #[async_trait]
 impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
     fn name(&self) -> Arc<String> {
         Arc::clone(&self.name)
+    }
+    fn selected(&self) -> &bool {
+        &self.selected
+    }
+    fn selected_mut(&mut self) -> &mut bool {
+        &mut self.selected
     }
 
     async fn get_torrent_list(&self) -> Result<Vec<TorrentInfo>, ConnectorError> {
@@ -141,6 +148,7 @@ impl<T: Api> Rqbit<T> {
 pub struct RqbitBuilder<T: Api> {
     name: Option<ConnectorName>,
     api: Option<T>,
+    selected: bool,
 }
 
 impl<T: Api> RqbitBuilder<T> {
@@ -148,6 +156,7 @@ impl<T: Api> RqbitBuilder<T> {
         Self {
             name: None,
             api: None,
+            selected: false,
         }
     }
     pub fn name(mut self, name: ConnectorName) -> Self {
@@ -158,6 +167,10 @@ impl<T: Api> RqbitBuilder<T> {
         self.api = Some(api);
         self
     }
+    pub fn selected(mut self, selected: bool) -> Self {
+        self.selected = selected;
+        self
+    }
     pub fn build(self) -> Result<Rqbit<T>, RqbitBuilderError> {
         ensure!(self.name.is_some(), MissingNameSnafu);
         ensure!(!self.name.as_ref().unwrap().is_empty(), InvalidNameSnafu);
@@ -166,6 +179,7 @@ impl<T: Api> RqbitBuilder<T> {
         Ok(Rqbit {
             name: self.name.unwrap(),
             api: self.api.unwrap(),
+            selected: self.selected,
         })
     }
 }

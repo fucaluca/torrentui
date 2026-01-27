@@ -41,7 +41,7 @@ pub struct Notifications<'a> {
 }
 
 impl Drawable for Notifications<'_> {
-    fn draw(&mut self, buf: &mut Buffer, area: Rect) {
+    fn draw(&mut self, buf: &mut Buffer, area: Rect, settings: &Settings) {
         if let Some(notification) = &self.notification {
             let timeout = self.settings.notification_timeout_millis;
             if let Some(last_interaction) = self.last_interaction
@@ -127,11 +127,11 @@ mod tests {
         fn buffer(&self) -> &Buffer {
             self.terminal.backend().buffer()
         }
-        fn draw(&mut self) -> color_eyre::Result<()> {
+        fn draw(&mut self, settings: &Settings) -> color_eyre::Result<()> {
             self.terminal.draw(|frame| {
                 let area = frame.area();
                 let buffer = frame.buffer_mut();
-                self.component.draw(buffer, area);
+                self.component.draw(buffer, area, settings);
             })?;
             Ok(())
         }
@@ -152,7 +152,7 @@ mod tests {
         let mut helper = TestHelper::new(80, 1, &settings)?;
 
         helper.notify(ConnectorEvents::AddOk);
-        helper.draw()?;
+        helper.draw(&settings)?;
 
         let mut expected = Buffer::with_lines(vec![
             "                                                                   Torrent added",
@@ -178,7 +178,7 @@ mod tests {
 
         helper.notify(ConnectorEvents::StartOk);
 
-        helper.draw()?;
+        helper.draw(&settings)?;
 
         let mut expected = Buffer::with_lines(vec![
             "                                                                 Torrent started",
@@ -205,7 +205,7 @@ mod tests {
 
         helper.notify(ConnectorEvents::PauseOk);
 
-        helper.draw()?;
+        helper.draw(&settings)?;
 
         let mut expected = Buffer::with_lines(vec![
             "                                                                  Torrent paused",
@@ -232,7 +232,7 @@ mod tests {
 
         helper.notify(ConnectorEvents::ForgetOk);
 
-        helper.draw()?;
+        helper.draw(&settings)?;
 
         let mut expected = Buffer::with_lines(vec![
             "                                          Torrent removed from list (files kept)",
@@ -259,7 +259,7 @@ mod tests {
 
         helper.notify(ConnectorEvents::DeleteOk);
 
-        helper.draw()?;
+        helper.draw(&settings)?;
 
         let mut expected = Buffer::with_lines(vec![
             "                                                      Torrent deleted with files",
@@ -286,7 +286,7 @@ mod tests {
 
         helper.notify(Notification::Error(String::from("Some error")));
 
-        helper.draw()?;
+        helper.draw(&settings)?;
 
         let mut expected = Buffer::with_lines(vec![
             "                                                                      Some error",
@@ -314,7 +314,7 @@ mod tests {
 
         helper.notify(Notification::Error(String::from("Some error")));
 
-        helper.draw()?;
+        helper.draw(&settings)?;
 
         let mut expected = Buffer::with_lines(vec![
             "                                                                      Some error",
@@ -327,7 +327,7 @@ mod tests {
         assert_eq!(buffer, &expected);
 
         helper.component.on_user_interaction();
-        helper.draw()?;
+        helper.draw(&settings)?;
 
         let mut expected = Buffer::with_lines(vec![
             "                                                                                ",
