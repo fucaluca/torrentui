@@ -1,9 +1,8 @@
-use std::ops::{Deref, DerefMut};
-
-use color_eyre::eyre::{Result, bail};
+use color_eyre::eyre::bail;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use indexmap::IndexMap;
 use serde::Deserialize;
+use snafu::Snafu;
 
 use crate::{action::Action, mode::Mode};
 
@@ -35,18 +34,46 @@ pub enum KeyBindingValue {
 }
 
 #[derive(Debug, Default)]
-pub struct KeyBindings(IndexMap<Mode, KeyBindingsNode>);
-
-impl Deref for KeyBindings {
-    type Target = IndexMap<Mode, KeyBindingsNode>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+pub struct KeyBindings {
+    map: IndexMap<Mode, KeyBindingsNode>,
+    current_sequence: Vec<KeyEvent>,
 }
 
-impl DerefMut for KeyBindings {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+#[derive(Debug, Snafu)]
+pub enum KeyBindingsError {
+    #[snafu(display("Key mode {:?} not found. Available key modes: {:?}", mode, keys))]
+    GetModeFailed { mode: Mode, keys: Vec<Mode> },
+}
+
+impl KeyBindings {
+    pub fn get_node(&self, mode: &Mode) -> Option<&KeyBindingsNode> {
+        self.map.get(mode)
+    }
+    pub fn action(
+        &mut self,
+        mode: Mode,
+        key_event: KeyEvent,
+    ) -> Result<Option<Action>, KeyBindingsError> {
+        let root = self.map.get(&mode).ok_or_else(|| {
+            let keys = self.map.keys().cloned().collect::<Vec<_>>();
+            KeyBindingsError::GetModeFailed { mode, keys }
+        })?;
+        self.current_sequence.push(key_event);
+        let mut current_node = root;
+        for key in &self.current_sequence {
+            if let Some(next_node) = current_node.next.get(key) {
+                current_node = next_node;
+            } else {
+                self.current_sequence.clear();
+                return Ok(None);
+            }
+        }
+        if current_node.next.is_empty() {
+            self.current_sequence.clear();
+            Ok(Some(current_node.action))
+        } else {
+            Ok(Some(Action::NoOp))
+        }
     }
 }
 
@@ -72,7 +99,10 @@ impl<'de> Deserialize<'de> for KeyBindings {
             })
             .collect::<Result<IndexMap<_, _>, D::Error>>()?;
 
-        Ok(KeyBindings(bindings))
+        Ok(KeyBindings {
+            map: bindings,
+            current_sequence: Vec::new(),
+        })
     }
 }
 
@@ -120,7 +150,7 @@ impl From<KeyBindingValue> for KeyBindingsNode {
     }
 }
 
-pub fn parse_key_sequence(raw: &str) -> Result<Vec<(KeyEvent, String)>> {
+pub fn parse_key_sequence(raw: &str) -> color_eyre::Result<Vec<(KeyEvent, String)>> {
     let mut events = Vec::new();
     let mut remaining = raw;
 
@@ -140,7 +170,7 @@ pub fn parse_key_sequence(raw: &str) -> Result<Vec<(KeyEvent, String)>> {
     Ok(events)
 }
 
-fn parse_key_event(raw: &str) -> Result<KeyEvent> {
+fn parse_key_event(raw: &str) -> color_eyre::Result<KeyEvent> {
     let (remaining, modifiers) = extract_modifiers(raw);
     parse_key_code_with_modifiers(remaining, modifiers)
 }
@@ -165,7 +195,10 @@ fn extract_modifiers(raw: &str) -> (&str, KeyModifiers) {
     (current, modifiers)
 }
 
-fn parse_key_code_with_modifiers(raw: &str, mut modifiers: KeyModifiers) -> Result<KeyEvent> {
+fn parse_key_code_with_modifiers(
+    raw: &str,
+    mut modifiers: KeyModifiers,
+) -> color_eyre::Result<KeyEvent> {
     let c = match raw {
         "esc" => KeyCode::Esc,
         "enter" => KeyCode::Enter,
@@ -216,12 +249,12 @@ pub mod test_utils;
 
 #[cfg(test)]
 mod tests {
-    use super::{Action, KeyBindingsNode, KeyCode, KeyEvent, KeyModifiers, Mode, Result};
+    use super::{Action, KeyBindingsNode, KeyCode, KeyEvent, KeyModifiers, Mode};
     use crate::settings::{ConfigSource, Settings};
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn parse_single_key_without_description() -> Result<()> {
+    fn parse_single_key_without_description() -> color_eyre::Result<()> {
         let config_toml = r#"
             [keybindings.TorrentList]
             "<q>" = "Quit"
@@ -231,6 +264,7 @@ mod tests {
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
+            .map
             .get(&Mode::TorrentList)
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
@@ -241,7 +275,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_single_key_with_description() -> Result<()> {
+    fn parse_single_key_with_description() -> color_eyre::Result<()> {
         let config_toml = r#"
             [keybindings.TorrentList]
             "<q>" = { action = "Quit", description = "Quit" }
@@ -251,6 +285,7 @@ mod tests {
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
+            .map
             .get(&Mode::TorrentList)
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
@@ -263,7 +298,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_keys_with_ctrl_modifier() -> Result<()> {
+    fn parse_keys_with_ctrl_modifier() -> color_eyre::Result<()> {
         let config_toml = r#"
             [keybindings.TorrentList]
             "<ctrl-q>" = "Quit"
@@ -273,6 +308,7 @@ mod tests {
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::CONTROL);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
+            .map
             .get(&Mode::TorrentList)
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
@@ -285,7 +321,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_keys_with_alt_modifier() -> Result<()> {
+    fn parse_keys_with_alt_modifier() -> color_eyre::Result<()> {
         let config_toml = r#"
             [keybindings.TorrentList]
             "<alt-q>" = "Quit"
@@ -295,6 +331,7 @@ mod tests {
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::ALT);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
+            .map
             .get(&Mode::TorrentList)
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
@@ -307,7 +344,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_keys_with_shift_modifier() -> Result<()> {
+    fn parse_keys_with_shift_modifier() -> color_eyre::Result<()> {
         let config_toml = r#"
             [keybindings.TorrentList]
             "<shift-q>" = "Quit"
@@ -317,6 +354,7 @@ mod tests {
         let key_event = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::SHIFT);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
+            .map
             .get(&Mode::TorrentList)
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
@@ -329,7 +367,7 @@ mod tests {
     }
 
     #[test]
-    fn make_keybindings_tree() -> Result<()> {
+    fn make_keybindings_tree() -> color_eyre::Result<()> {
         let config_toml = r#"
           [keybindings.TorrentList]
           "<ctrl-a><alt-b>" = "AddTorrent"
@@ -341,6 +379,7 @@ mod tests {
 
         let keybindings: &KeyBindingsNode = settings
             .keybindings
+            .map
             .get(&Mode::TorrentList)
             .and_then(|k| k.next.get(&key_event1))
             .unwrap_or_else(|| panic!("KeyEvent {key_event1:#?} not found"));
@@ -362,7 +401,7 @@ mod tests {
     }
 
     #[test]
-    fn keybindings_with_common_prefix_share_node() -> Result<()> {
+    fn keybindings_with_common_prefix_share_node() -> color_eyre::Result<()> {
         let config_toml = r#"
             [keybindings.TorrentList]
             "<ctrl-a>" = { description = "Add" }
@@ -375,6 +414,7 @@ mod tests {
 
         let keybindings = settings
             .keybindings
+            .map
             .get(&Mode::TorrentList)
             .and_then(|k| k.next.get(&key_event1))
             .unwrap_or_else(|| panic!("KeyEvent {key_event1:#?} not found"));

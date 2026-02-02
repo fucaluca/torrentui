@@ -13,20 +13,20 @@ use crate::{
     ui::{add_torrent::AddTorrent, which_key::WhichKey},
 };
 
-pub struct Components<'a> {
+pub struct Components {
     pub torrent_list: TorrentList,
-    pub notifications: Notifications<'a>,
-    pub which_key: WhichKey<'a>,
-    pub add_torrent: AddTorrent<'a>,
+    pub notifications: Notifications,
+    pub which_key: WhichKey,
+    pub add_torrent: AddTorrent,
 }
 
-impl<'a> Components<'a> {
-    pub fn new(settings: &'a Settings) -> Self {
+impl Components {
+    pub fn new() -> Self {
         Self {
             torrent_list: TorrentList::new(),
-            notifications: Notifications::new(settings),
-            which_key: WhichKey::new(settings),
-            add_torrent: AddTorrent::new(settings),
+            notifications: Notifications::new(),
+            which_key: WhichKey::new(),
+            add_torrent: AddTorrent::new(),
         }
     }
 }
@@ -35,7 +35,7 @@ pub trait Drawable {
     fn draw(&mut self, buf: &mut Buffer, area: Rect, settings: &Settings);
 }
 
-pub enum KeyEventResult {
-    Ignored,
-    Consumed,
+pub enum ActionResult {
+    Handled,
+    Unhandled,
 }

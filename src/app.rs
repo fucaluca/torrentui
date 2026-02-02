@@ -12,32 +12,30 @@ use crate::{
     connectors::ConnectorCommands,
     keybindings_trie::{ConnectorEvents, KeyBindingsTrie},
     mode::Mode,
-    settings::Settings,
+    settings::{ConfigSource, Settings, get_config_dir},
     terminal::{self, Event, Tui},
-    ui::{self, Drawable, KeyEventResult},
+    ui::{self, ActionResult, Drawable},
 };
 
-pub struct App<'a> {
+pub struct App {
     should_quit: bool,
-    keybindings_trie: KeyBindingsTrie<'a>,
-    settings: &'a Settings,
+    settings: Settings,
     connectors: HashMap<String, mpsc::Sender<ConnectorCommands>>,
-    components: ui::Components<'a>,
+    components: ui::Components,
     mode: Mode,
     tui: Tui,
 }
-impl<'a> App<'a> {
-    pub fn new(settings: &'a Settings) -> Result<Self> {
+impl App {
+    pub fn new() -> Result<Self> {
+        let config_file_path = get_config_dir().join("config.toml");
+        let config_source = ConfigSource::File(config_file_path);
+        let settings = Settings::new(config_source)?;
         let mode = Mode::default();
-        let keybindings_trie = KeyBindingsTrie::builder(&settings.keybindings)
-            .key_mode(mode)
-            .build()?;
 
         let tui = Tui::new()?;
         Ok(Self {
             should_quit: false,
-            components: ui::Components::new(settings),
-            keybindings_trie,
+            components: ui::Components::new(),
             settings,
             connectors: HashMap::new(),
             mode,
@@ -83,23 +81,23 @@ impl<'a> App<'a> {
             let buffer = frame.buffer_mut();
             let [content_area, notification_area] = main_area.areas(area);
             match self.mode {
-                Mode::AddTorrent | Mode::Input => {
+                Mode::AddTorrent => {
                     self.components
                         .add_torrent
-                        .draw(buffer, content_area, self.settings);
+                        .draw(buffer, content_area, &self.settings);
                 }
                 _ => {
                     self.components
                         .torrent_list
-                        .draw(buffer, content_area, self.settings);
+                        .draw(buffer, content_area, &self.settings);
                     self.components
                         .notifications
-                        .draw(buffer, notification_area, self.settings);
+                        .draw(buffer, notification_area, &self.settings);
                 }
             };
             self.components
                 .which_key
-                .draw(buffer, content_area, self.settings);
+                .draw(buffer, content_area, &self.settings);
         })?;
         Ok(())
     }
@@ -127,10 +125,6 @@ impl<'a> App<'a> {
                 self.components.torrent_list.update_table();
             }
             n => self.notify(n),
-            /* ConnectorEvents::Error(e) => eprintln!("{e:#?}"),
-            _ => {
-                println!("TODO: implement notifications")
-            } */
         };
         Ok(())
     }
@@ -138,41 +132,35 @@ impl<'a> App<'a> {
     fn notify(&mut self, n: ConnectorEvents) {
         self.components.notifications.notify(n);
     }
+
     async fn handle_key_events(&mut self, key_event: KeyEvent) -> Result<()> {
-        let result = self.components.add_torrent.key_event(key_event);
+        let result = match self.mode {
+            Mode::TorrentList => {
+                self.components
+                    .torrent_list
+                    .handle_key_events(key_event, &mut self.settings, &mut self.connectors)
+                    .await?
+            }
+            Mode::AddTorrent => {
+                self.components
+                    .add_torrent
+                    .handle_key_events(key_event, &mut self.settings, &mut self.connectors)
+                    .await?
+            }
+        };
         match result {
-            KeyEventResult::Consumed => {}
-            KeyEventResult::Ignored => self.handle_command(key_event).await?,
-        }
-        Ok(())
-    }
-
-    async fn handle_command(&mut self, key_event: KeyEvent) -> Result<()> {
-        if let Some(action) = self.keybindings_trie.action(key_event) {
-            self.components.which_key.clear();
-            match action {
-                Action::Help | Action::NoOp => self.show_help(),
-                Action::Quit => self.should_quit = true,
-                Action::Input => self.components.add_torrent.enable_input(),
-                Action::AddTorrent => {
-                    self.mode = Mode::AddTorrent;
-                    self.keybindings_trie.key_mode(self.mode)?;
-                }
-                Action::Escape => {
-                    self.mode = Mode::default();
-                    self.keybindings_trie.key_mode(self.mode)?;
-                    self.components.which_key.clear();
-                }
-
-                a => {
-                    self.components.notifications.on_user_interaction();
-                    let command = self.components.torrent_list.action(a);
-
-                    if let Some((connector_name, command)) = command
-                        && let Some(connector) =
-                            self.connectors.get_mut(&connector_name.to_string())
-                    {
-                        connector.send(command).await?;
+            ActionResult::Handled => {}
+            ActionResult::Unhandled => {
+                if let Some(action) = self
+                    .settings
+                    .keybindings
+                    .action(Mode::default(), key_event)?
+                {
+                    match action {
+                        Action::Quit => self.should_quit = true,
+                        Action::AddTorrent => self.mode = Mode::AddTorrent,
+                        Action::Help => self.show_help()?,
+                        _ => {}
                     }
                 }
             }
@@ -180,57 +168,11 @@ impl<'a> App<'a> {
         Ok(())
     }
 
-    /* async fn handle_key_events(&mut self, key_event: KeyEvent) -> Result<()> {
-        if let Some(action) = self.keybindings_trie.action(key_event) {
-            self.components.which_key.clear();
-            match action {
-                Action::Input => {
-                    self.mode = Mode::Input;
-                }
-                Action::NoOp | Action::Help => self.show_help(),
-                Action::Quit => self.should_quit = true,
-                Action::Escape => {
-                    self.mode = Mode::default();
-                    self.keybindings_trie.key_mode(self.mode)?;
-                    self.components.which_key.clear();
-                }
-                Action::AddTorrent => {
-                    self.mode = Mode::AddTorrent;
-                    self.keybindings_trie.key_mode(self.mode)?;
-                }
-                a => {
-                    self.components.notifications.on_user_interaction();
-                    let command = self.components.torrent_list.action(a);
-
-                    if let Some((connector_name, command)) = command
-                        && let Some(connector) =
-                            self.connectors.get_mut(&connector_name.to_string())
-                    {
-                        connector.send(command).await?;
-                    }
-
-                    let command = self.components.add_torrent.action(a);
-
-                    if let Some((connector_name, command)) = command
-                        && let Some(connector) =
-                            self.connectors.get_mut(&connector_name.to_string())
-                    {
-                        connector.send(command).await?;
-                    }
-                }
-            };
-        } else {
-            self.components.add_torrent.input(key_event.code);
-            self.components.which_key.clear();
+    fn show_help(&mut self) -> Result<()> {
+        if let Some(node) = self.settings.keybindings.get_node(&self.mode) {
+            self.components.which_key.update(node);
         }
-
         Ok(())
-    } */
-
-    fn show_help(&mut self) {
-        self.components
-            .which_key
-            .update(self.keybindings_trie.keybindings);
     }
 
     async fn handle_tui_events(&mut self, event: terminal::Event) -> Result<()> {

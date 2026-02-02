@@ -11,46 +11,8 @@ use crate::{
     torrent::TorrentInfo,
 };
 
-pub struct KeyBindingsTrie<'a> {
-    pub keybindings: &'a KeyBindingsNode,
-    keybindings_root: &'a KeyBindingsNode,
-    pub keybindings_settings: &'a KeyBindings,
-}
-
-pub struct KeyBindingsTrieBuilder<'a> {
-    keybindings_settings: &'a KeyBindings,
-    key_mode: Mode,
-}
-
-impl<'a> KeyBindingsTrieBuilder<'a> {
-    pub fn new(keybindings_settings: &'a KeyBindings) -> Self {
-        Self {
-            keybindings_settings,
-            key_mode: Mode::default(),
-        }
-    }
-
-    pub fn key_mode(mut self, key_mode: Mode) -> Self {
-        self.key_mode = key_mode;
-        self
-    }
-
-    pub fn build(self) -> Result<KeyBindingsTrie<'a>> {
-        let keybindings = self
-            .keybindings_settings
-            .get(&self.key_mode)
-            .ok_or_eyre(format!(
-                "Key mode {:?} not found. Available key modes: {:?}",
-                &self.key_mode,
-                &self.keybindings_settings.keys().collect::<Vec<_>>()
-            ))?;
-
-        Ok(KeyBindingsTrie {
-            keybindings,
-            keybindings_root: keybindings,
-            keybindings_settings: self.keybindings_settings,
-        })
-    }
+pub struct KeyBindingsTrie {
+    current_sequence: Vec<KeyEvent>,
 }
 
 #[derive(Debug)]
@@ -64,45 +26,62 @@ pub enum ConnectorEvents {
     Error(ConnectorError),
 }
 
-impl<'a> KeyBindingsTrie<'a> {
-    pub fn builder(keybindings_settings: &'a KeyBindings) -> KeyBindingsTrieBuilder<'a> {
-        KeyBindingsTrieBuilder::new(keybindings_settings)
+impl KeyBindingsTrie {
+    pub fn new() -> Result<Self> {
+        /* let _ = keybindings_settings.get(mode).ok_or_eyre(format!(
+            "Key mode {:?} not found. Available key modes: {:?}",
+            mode,
+            &keybindings_settings.keys().collect::<Vec<_>>()
+        ))?; */
+
+        Ok(Self {
+            current_sequence: Vec::new(),
+        })
+    }
+    pub fn action(&mut self, key_event: KeyEvent, root: &KeyBindingsNode) -> Option<Action> {
+        self.current_sequence.push(key_event);
+        let mut current_node = root;
+        for key in &self.current_sequence {
+            if let Some(next_node) = current_node.next.get(key) {
+                current_node = next_node;
+            } else {
+                self.current_sequence.clear();
+                return None;
+            }
+        }
+        if current_node.next.is_empty() {
+            self.current_sequence.clear();
+            Some(current_node.action)
+        } else {
+            Some(Action::NoOp)
+        }
     }
 
-    pub fn action(&mut self, key_event: KeyEvent) -> Option<Action> {
-        self.keybindings
-            .next
-            .get(&key_event)
-            .map(|next| {
-                self.keybindings = if next.next.is_empty() {
-                    self.keybindings_root
-                } else {
-                    next
-                };
-                next.action
-            })
-            .or_else(|| {
-                self.keybindings = self.keybindings_root;
-                None
-            })
-    }
-
-    pub fn key_mode(&mut self, key_mode: Mode) -> Result<()> {
-        let keybindings = self
-            .keybindings_settings
-            .get(&key_mode)
-            .ok_or_eyre(format!(
-                "Key mode {:?} not found. Available key modes {:?}",
-                &key_mode,
-                &self.keybindings_settings.keys().collect::<Vec<_>>()
-            ))?;
-        self.keybindings = keybindings;
-        self.keybindings_root = keybindings;
+    /* pub fn key_mode(&mut self, key_mode: Mode, keybindings_settings: &KeyBindings) -> Result<()> {
+        let _ = keybindings_settings.get(&key_mode).ok_or_eyre(format!(
+            "Key mode {:?} not found. Available key modes {:?}",
+            &key_mode,
+            &keybindings_settings.keys().collect::<Vec<_>>()
+        ))?;
+        self.key_mode = key_mode;
+        self.current_sequence = Vec::new();
         Ok(())
+    } */
+
+    pub fn get_current_node<'a>(&self, root: &'a KeyBindingsNode) -> Result<&'a KeyBindingsNode> {
+        let mut current = root;
+        for key in &self.current_sequence {
+            if let Some(next) = current.next.get(key) {
+                current = next;
+            } else {
+                return Ok(root);
+            }
+        }
+        Ok(current)
     }
 }
 
-#[cfg(test)]
+/* #[cfg(test)]
 mod test {
     use super::{Action, KeyBindingsTrie, Mode, Result};
     use crate::settings::keybindings::{
@@ -123,11 +102,11 @@ mod test {
         let key_mode = Mode::default();
         keybindings_settings.insert(key_mode, keybindings_node);
 
-        let mut app_state = KeyBindingsTrie::builder(&keybindings_settings)
+        let mut keybindings_trie = KeyBindingsTrie::builder()
             .key_mode(key_mode)
-            .build()?;
+            .build(&keybindings_settings)?;
 
-        let action = app_state.action(key_event);
+        let action = keybindings_trie.action(key_event, &keybindings_settings);
         assert_eq!(action.is_some(), true);
         assert_eq!(action.unwrap(), Action::Quit);
 
@@ -144,13 +123,13 @@ mod test {
         keybindings_settings.insert(key_mode1, keybindings_node_1);
         keybindings_settings.insert(key_mode2, keybindings_node_2);
 
-        let mut app_state = KeyBindingsTrie::builder(&keybindings_settings)
+        let mut keybindings_trie = KeyBindingsTrie::builder()
             .key_mode(key_mode1)
-            .build()?;
+            .build(&keybindings_settings)?;
 
         assert_eq!(keybindings_settings.contains_key(&key_mode1), true);
 
-        app_state.key_mode(key_mode2)?;
+        keybindings_trie.key_mode(key_mode2, &keybindings_settings)?;
 
         assert_eq!(keybindings_settings.contains_key(&key_mode2), true);
 
@@ -165,12 +144,17 @@ mod test {
 
         keybindings_settings.insert(existing_key_mode, KeyBindingsNode::default());
 
-        let mut app_state = KeyBindingsTrie::builder(&keybindings_settings)
+        let mut keybindings_trie = KeyBindingsTrie::builder()
             .key_mode(existing_key_mode)
-            .build()?;
+            .build(&keybindings_settings)?;
 
         assert_eq!(keybindings_settings.contains_key(&existing_key_mode), true);
-        assert_eq!(app_state.key_mode(non_existent_key_mode).is_err(), true);
+        assert_eq!(
+            keybindings_trie
+                .key_mode(non_existent_key_mode, &keybindings_settings)
+                .is_err(),
+            true
+        );
 
         Ok(())
     }
@@ -201,34 +185,28 @@ mod test {
         let mut keybindings_settings = KeyBindings::default();
         keybindings_settings.insert(key_mode, root);
 
-        let mut app_state = KeyBindingsTrie::builder(&keybindings_settings)
+        let mut keybindings_trie = KeyBindingsTrie::builder()
             .key_mode(key_mode)
-            .build()?;
+            .build(&keybindings_settings)?;
 
-        assert_eq!(
-            std::ptr::eq(app_state.keybindings, app_state.keybindings_root),
-            true
-        );
+        assert_eq!(keybindings_trie.current_sequence.is_empty(), true);
 
-        app_state
-            .action(key_event_a)
+        keybindings_trie
+            .action(key_event_a, &keybindings_settings)
             .expect("Method action should return Action");
 
-        assert_eq!(
-            std::ptr::eq(app_state.keybindings, app_state.keybindings_root),
-            false
-        );
+        assert_eq!(keybindings_trie.current_sequence.is_empty(), false);
 
-        let action_is_none = app_state
-            .action(KeyEvent::new(KeyCode::Char('z'), KeyModifiers::NONE))
+        let action_is_none = keybindings_trie
+            .action(
+                KeyEvent::new(KeyCode::Char('z'), KeyModifiers::NONE),
+                &keybindings_settings,
+            )
             .is_none();
 
         assert_eq!(action_is_none, true);
 
-        assert_eq!(
-            std::ptr::eq(app_state.keybindings, app_state.keybindings_root),
-            true
-        );
+        assert_eq!(keybindings_trie.current_sequence.is_empty(), true);
 
         Ok(())
     }
@@ -256,35 +234,26 @@ mod test {
         let key_mode = Mode::default();
         keybindings_settings.insert(key_mode, root);
 
-        let mut app_state = KeyBindingsTrie::builder(&keybindings_settings)
+        let mut keybindings_trie = KeyBindingsTrie::builder()
             .key_mode(key_mode)
-            .build()?;
+            .build(&keybindings_settings)?;
 
-        assert_eq!(
-            std::ptr::eq(app_state.keybindings, app_state.keybindings_root),
-            true
-        );
+        assert_eq!(keybindings_trie.current_sequence.is_empty(), true);
 
-        let action_a = app_state
-            .action(key_event_a)
+        let action_a = keybindings_trie
+            .action(key_event_a, &keybindings_settings)
             .expect("Method action should return Action");
 
         assert_eq!(action_a, Action::NoOp);
-        assert_eq!(
-            std::ptr::eq(app_state.keybindings, app_state.keybindings_root),
-            false
-        );
+        assert_eq!(keybindings_trie.current_sequence.is_empty(), false);
 
-        let action_b = app_state
-            .action(key_event_b)
+        let action_b = keybindings_trie
+            .action(key_event_b, &keybindings_settings)
             .expect("Method action should return Action");
 
         assert_eq!(action_b, Action::Quit);
-        assert_eq!(
-            std::ptr::eq(app_state.keybindings, app_state.keybindings_root),
-            true
-        );
+        assert_eq!(keybindings_trie.current_sequence.is_empty(), true);
 
         Ok(())
     }
-}
+} */

@@ -12,12 +12,11 @@ use crate::{
 
 const TITLE: &str = " Commands ";
 
-pub struct WhichKey<'a> {
+pub struct WhichKey {
     keys: Vec<(String, Option<String>)>,
-    settings: &'a Settings,
 }
 
-impl Drawable for WhichKey<'_> {
+impl Drawable for WhichKey {
     fn draw(
         &mut self,
         buf: &mut ratatui::prelude::Buffer,
@@ -27,13 +26,10 @@ impl Drawable for WhichKey<'_> {
         if self.keys.is_empty() {
             return;
         }
-        let key_style = self.settings.styles.get_style(&StyleMode::WhichKey, "key");
-        let desc_style = self.settings.styles.get_style(&StyleMode::WhichKey, "desc");
-        let next_style = self.settings.styles.get_style(&StyleMode::WhichKey, "next");
-        let default_style = self
-            .settings
-            .styles
-            .get_style(&StyleMode::WhichKey, "default");
+        let key_style = settings.styles.get_style(&StyleMode::WhichKey, "key");
+        let desc_style = settings.styles.get_style(&StyleMode::WhichKey, "desc");
+        let next_style = settings.styles.get_style(&StyleMode::WhichKey, "next");
+        let default_style = settings.styles.get_style(&StyleMode::WhichKey, "default");
         let rows = self
             .keys
             .iter()
@@ -78,12 +74,9 @@ impl Drawable for WhichKey<'_> {
     }
 }
 
-impl<'a> WhichKey<'a> {
-    pub fn new(settings: &'a Settings) -> Self {
-        Self {
-            keys: vec![],
-            settings,
-        }
+impl WhichKey {
+    pub fn new() -> Self {
+        Self { keys: vec![] }
     }
 
     pub fn clear(&mut self) {
@@ -176,7 +169,7 @@ mod tests {
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
 
-        let mut which_key = WhichKey::new(&settings);
+        let mut which_key = WhichKey::new();
 
         let node = KeyBindingsNode {
             display: "q".into(),
@@ -256,7 +249,7 @@ mod tests {
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
 
-        let mut which_key = WhichKey::new(&settings);
+        let mut which_key = WhichKey::new();
 
         let leaf = KeyBindingsNode {
             display: "q".into(),

@@ -1,35 +1,44 @@
+use std::collections::HashMap;
+
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     text::Line,
     widgets::{Block, BorderType, Borders, Clear, Paragraph, Row, Table, TableState, Widget},
 };
+use snafu::ResultExt;
+use tokio::sync::mpsc;
 
+#[expect(unused)]
 use crate::{
     action::Action,
     connectors::{ConnectorCommands, ConnectorName},
+    keybindings_trie::KeyBindingsTrie,
     settings::Settings,
-    ui::{Drawable, KeyEventResult, assets::Symbols},
+    ui::{ActionResult, Drawable, assets::Symbols},
+};
+use crate::{
+    action::{ActionError, GetActionFailedSnafu},
+    mode::Mode,
 };
 
-pub struct AddTorrent<'a> {
-    settings: &'a Settings,
-    table: Table<'a>,
+pub struct AddTorrent {
+    #[expect(unused)]
     table_state: TableState,
-    connector_names: Vec<&'a ConnectorName>,
     display_text: String,
+    #[expect(unused)]
     cursor_position: usize,
+    #[expect(unused)]
     input_mode: bool,
 }
 
-impl Drawable for AddTorrent<'_> {
+impl Drawable for AddTorrent {
     fn draw(
         &mut self,
         buf: &mut ratatui::prelude::Buffer,
         area: ratatui::prelude::Rect,
         settings: &Settings,
     ) {
-        self.update_table();
         let centered_area = self.centered_rect(50, 10, area);
         Clear.render(centered_area, buf);
         let block = Block::default()
@@ -50,7 +59,9 @@ impl Drawable for AddTorrent<'_> {
 
         Paragraph::new(self.display_text.clone()).render(chunks[0], buf);
         Line::from(Symbols::ROW_DIVIDER.repeat(chunks[1].width as usize)).render(chunks[1], buf);
-        self.table.clone().render(chunks[2], buf);
+        // self.table.clone().render(chunks[2], buf);
+        let table = self.build_table(settings);
+        table.render(chunks[2], buf);
 
         /* Widget::render(
             Block::default()
@@ -71,63 +82,45 @@ impl Drawable for AddTorrent<'_> {
     }
 }
 
-impl<'a> AddTorrent<'a> {
-    pub fn new(settings: &'a Settings) -> Self {
-        let connector_names = settings.connectors.keys().collect::<Vec<&ConnectorName>>();
+impl AddTorrent {
+    pub fn new() -> Self {
         Self {
-            settings,
-            table: Table::default(),
             table_state: TableState::default(),
-            connector_names,
             display_text: String::new(),
             input_mode: false,
             cursor_position: 0,
         }
     }
 
-    pub fn key_event(&mut self, key_event: KeyEvent) -> KeyEventResult {
-        if !self.input_mode {
-            return KeyEventResult::Ignored;
-        }
-        match key_event.code {
-            KeyCode::Char(c) => self.display_text.push(c),
-            KeyCode::Backspace => {
-                self.display_text.pop();
-            }
-            KeyCode::Esc => self.disable_input(),
-            _ => {}
-        };
-        KeyEventResult::Consumed
-    }
-
-    pub fn enable_input(&mut self) {
-        self.input_mode = true;
-    }
-
-    pub fn disable_input(&mut self) {
-        self.input_mode = false;
-    }
-
-    pub fn action(&mut self, action: Action) -> Option<(ConnectorName, ConnectorCommands)> {
-        match action {
-            Action::Backspace => {
-                self.display_text.pop();
-                None
-            }
-            _ => None,
+    pub async fn handle_key_events(
+        &self,
+        key_event: KeyEvent,
+        settings: &mut Settings,
+        #[expect(unused)] connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
+    ) -> Result<ActionResult, ActionError> {
+        #[expect(unused)]
+        if let Some(action) = settings
+            .keybindings
+            .action(Mode::AddTorrent, key_event)
+            .context(GetActionFailedSnafu)?
+        {
+            Ok(ActionResult::Unhandled)
+        } else {
+            Ok(ActionResult::Unhandled)
         }
     }
 
+    #[expect(unused)]
     pub fn input(&mut self, key_code: KeyCode) {
+        #[expect(clippy::single_match)]
         match key_code {
             KeyCode::Char(ch) => self.display_text.push(ch),
             _ => {}
         }
     }
 
-    pub fn update_table(&mut self) {
-        let rows: Vec<Row<'_>> = self
-            .settings
+    fn build_table(&self, settings: &Settings) -> Table<'static> {
+        let rows: Vec<Row<'_>> = settings
             .connectors
             .iter()
             .map(|(c, con)| {
@@ -142,7 +135,7 @@ impl<'a> AddTorrent<'a> {
             })
             .collect();
         let widths = [Constraint::Length(2), Constraint::Fill(1)];
-        self.table = Table::new(rows, widths).column_spacing(1);
+        Table::new(rows, widths).column_spacing(1)
     }
 
     fn centered_rect(&self, width: u16, height: u16, area: Rect) -> Rect {

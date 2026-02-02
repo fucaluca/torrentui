@@ -52,7 +52,7 @@ impl<'a> Cell<'a> {
     }
 
     pub fn status_with_name(&self) -> Line<'static> {
-        let status_icon = assets::Icons::status(&self.torrent_info);
+        let status_icon = assets::Icons::status(self.torrent_info);
         let mut status_icon_with_name = String::new();
         status_icon_with_name.push(status_icon);
         status_icon_with_name.push(' ');

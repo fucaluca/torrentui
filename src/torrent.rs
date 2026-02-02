@@ -33,20 +33,6 @@ pub struct TorrentInfo {
     pub peer_seen: u32,
 }
 
-#[derive(Debug)]
-#[cfg_attr(test, derive(serde::Serialize, PartialEq, Eq, Clone))]
-pub struct TorrentList {
-    pub torrents: Vec<TorrentItem>,
-}
-
-#[derive(Debug)]
-#[cfg_attr(test, derive(fake::Dummy, serde::Serialize, PartialEq, Eq, Clone))]
-pub struct TorrentItem {
-    pub info_hash: InfoHash,
-    pub name: String,
-    pub output_folder: String,
-}
-
 #[derive(Debug, Deserialize, Hash, Eq, PartialEq)]
 #[cfg_attr(test, derive(fake::Dummy, Clone))]
 pub enum State {
@@ -61,4 +47,5 @@ pub use source::Magnet;
 
 #[cfg(test)]
 use fake::faker::filesystem::en::DirPath;
+#[cfg(test)]
 use fake::faker::lorem::en::Sentence;

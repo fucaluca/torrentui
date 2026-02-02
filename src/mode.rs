@@ -5,5 +5,4 @@ pub enum Mode {
     #[default]
     TorrentList,
     AddTorrent,
-    Input,
 }

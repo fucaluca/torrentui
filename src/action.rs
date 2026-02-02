@@ -1,6 +1,10 @@
 use std::fmt::Display;
 
 use serde::Deserialize;
+use snafu::Snafu;
+use tokio::sync::mpsc::error::SendError;
+
+use crate::{connectors::ConnectorCommands, settings::keybindings::KeyBindingsError};
 
 #[derive(Debug, Default, Deserialize, Clone, Copy)]
 #[cfg_attr(test, derive(Eq, PartialEq))]
@@ -45,4 +49,17 @@ impl Display for Action {
             Self::Backspace => write!(f, "Backspace"),
         }
     }
+}
+
+#[derive(Debug, Snafu)]
+#[snafu(visibility(pub))]
+pub enum ActionError {
+    #[snafu(display("Action failed"))]
+    CommandSendFailed {
+        source: SendError<ConnectorCommands>,
+    },
+    #[snafu(display("Connector not found"))]
+    ConnectorNotFound,
+    #[snafu(display(r#"Failed to get Action"#))]
+    GetActionFailed { source: KeyBindingsError },
 }

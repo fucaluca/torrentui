@@ -34,16 +34,15 @@ impl From<ConnectorEvents> for Option<Notification> {
     }
 }
 
-pub struct Notifications<'a> {
-    settings: &'a Settings,
+pub struct Notifications {
     notification: Option<Notification>,
     last_interaction: Option<Instant>,
 }
 
-impl Drawable for Notifications<'_> {
+impl Drawable for Notifications {
     fn draw(&mut self, buf: &mut Buffer, area: Rect, settings: &Settings) {
         if let Some(notification) = &self.notification {
-            let timeout = self.settings.notification_timeout_millis;
+            let timeout = settings.notification_timeout_millis;
             if let Some(last_interaction) = self.last_interaction
                 && Instant::now().duration_since(last_interaction) > Duration::from_millis(timeout)
             {
@@ -51,14 +50,8 @@ impl Drawable for Notifications<'_> {
                 self.last_interaction = None;
                 return;
             }
-            let info_style = self
-                .settings
-                .styles
-                .get_style(&StyleMode::Notification, "info");
-            let err_style = self
-                .settings
-                .styles
-                .get_style(&StyleMode::Notification, "error");
+            let info_style = settings.styles.get_style(&StyleMode::Notification, "info");
+            let err_style = settings.styles.get_style(&StyleMode::Notification, "error");
             let msg = match notification {
                 Notification::Info(m) => Paragraph::new(m.clone()).style(info_style),
                 Notification::Error(e) => Paragraph::new(e.clone()).style(err_style),
@@ -69,10 +62,9 @@ impl Drawable for Notifications<'_> {
     }
 }
 
-impl<'a> Notifications<'a> {
-    pub fn new(settings: &'a Settings) -> Self {
+impl Notifications {
+    pub fn new() -> Self {
         Self {
-            settings,
             notification: None,
             last_interaction: None,
         }
@@ -108,17 +100,17 @@ mod tests {
         ui::{Notifications, notifications::Notification},
     };
 
-    struct TestHelper<'a> {
+    struct TestHelper {
         terminal: Terminal<TestBackend>,
-        component: Notifications<'a>,
+        component: Notifications,
     }
 
-    impl<'a> TestHelper<'a> {
-        fn new(width: u16, height: u16, settings: &'a Settings) -> color_eyre::Result<Self> {
+    impl TestHelper {
+        fn new(width: u16, height: u16) -> color_eyre::Result<Self> {
             let backend = TestBackend::new(width, height);
             let terminal = Terminal::new(backend)?;
 
-            let component = Notifications::new(settings);
+            let component = Notifications::new();
             Ok(Self {
                 terminal,
                 component,
@@ -149,7 +141,7 @@ mod tests {
         "#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
-        let mut helper = TestHelper::new(80, 1, &settings)?;
+        let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(ConnectorEvents::AddOk);
         helper.draw(&settings)?;
@@ -174,7 +166,7 @@ mod tests {
         "#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
-        let mut helper = TestHelper::new(80, 1, &settings)?;
+        let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(ConnectorEvents::StartOk);
 
@@ -201,7 +193,7 @@ mod tests {
         "#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
-        let mut helper = TestHelper::new(80, 1, &settings)?;
+        let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(ConnectorEvents::PauseOk);
 
@@ -228,7 +220,7 @@ mod tests {
         "#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
-        let mut helper = TestHelper::new(80, 1, &settings)?;
+        let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(ConnectorEvents::ForgetOk);
 
@@ -255,7 +247,7 @@ mod tests {
         "#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
-        let mut helper = TestHelper::new(80, 1, &settings)?;
+        let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(ConnectorEvents::DeleteOk);
 
@@ -282,7 +274,7 @@ mod tests {
         "#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
-        let mut helper = TestHelper::new(80, 1, &settings)?;
+        let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(Notification::Error(String::from("Some error")));
 
@@ -310,7 +302,7 @@ mod tests {
         "#;
         let config_source = ConfigSource::String(config_toml.into());
         let settings = Settings::new(config_source)?;
-        let mut helper = TestHelper::new(80, 1, &settings)?;
+        let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(Notification::Error(String::from("Some error")));
 

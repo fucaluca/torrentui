@@ -6,7 +6,9 @@ use url::Url;
 #[derive(Debug)]
 #[cfg_attr(test, derive(Eq, PartialEq, Clone))]
 pub enum Source {
+    #[cfg_attr(not(test), expect(unused))]
     Magnet(Magnet),
+    #[cfg_attr(not(test), expect(unused))]
     FilePath(PathBuf),
 }
 
@@ -42,6 +44,7 @@ pub enum MagnetError {
 }
 
 impl Magnet {
+    #[cfg_attr(not(test), expect(unused))]
     pub fn new(magnet: impl Into<String>) -> Result<Self, MagnetError> {
         let magnet = magnet.into();
         let magnet = Self::validate(magnet)?;
