@@ -1,7 +1,6 @@
 use ratatui::{
     layout::Alignment,
     text::{Line, Text},
-    widgets::Cell,
 };
 
 #[derive(Default)]

@@ -5,7 +5,18 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use snafu::Snafu;
 
-use crate::torrent::{self, InfoHash, Source};
+use crate::torrent::{self, InfoHash, Source, TorrentInfo};
+
+#[derive(Debug)]
+pub enum ConnectorEvents {
+    AddOk,
+    PauseOk,
+    StartOk,
+    ForgetOk,
+    DeleteOk,
+    UpdateTorrentList(Arc<String>, Vec<TorrentInfo>),
+    Error(ConnectorError),
+}
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
@@ -18,6 +29,7 @@ pub trait Connector: std::fmt::Debug + Sync + Send {
     async fn start_torrent(&self, info_hash: torrent::InfoHash) -> Result<(), ConnectorError>;
     fn name(&self) -> Arc<String>;
     fn selected(&self) -> &bool;
+    #[expect(dead_code)]
     fn selected_mut(&mut self) -> &mut bool;
 }
 
@@ -72,6 +84,7 @@ pub enum ConnectorError {
 #[derive(Debug)]
 #[cfg_attr(test, derive(Clone))]
 pub enum ConnectorCommands {
+    #[cfg_attr(not(test), expect(dead_code))]
     Add(Source),
     Action {
         kind: ActionKind,

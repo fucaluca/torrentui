@@ -13,13 +13,12 @@ use tokio::sync::mpsc;
 use crate::{
     action::Action,
     connectors::{ConnectorCommands, ConnectorName},
-    keybindings_trie::KeyBindingsTrie,
     settings::Settings,
     ui::{ActionResult, Drawable, assets::Symbols},
 };
 use crate::{
     action::{ActionError, GetActionFailedSnafu},
-    mode::Mode,
+    mode::KeyMode,
 };
 
 pub struct AddTorrent {
@@ -98,15 +97,14 @@ impl AddTorrent {
         settings: &mut Settings,
         #[expect(unused)] connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
     ) -> Result<ActionResult, ActionError> {
-        #[expect(unused)]
         if let Some(action) = settings
             .keybindings
-            .action(Mode::AddTorrent, key_event)
+            .action(KeyMode::AddTorrent, key_event)
             .context(GetActionFailedSnafu)?
         {
-            Ok(ActionResult::Unhandled)
+            Ok(ActionResult::Unhandled(action))
         } else {
-            Ok(ActionResult::Unhandled)
+            Ok(ActionResult::Unhandled(Action::default()))
         }
     }
 
@@ -158,6 +156,7 @@ impl AddTorrent {
             .split(popup_layout[1])[1]
     }
 
+    #[expect(unused)]
     fn split_area(&self, inner_area: Rect) -> (Rect, Rect, Rect) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)

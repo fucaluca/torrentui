@@ -6,15 +6,13 @@ use ratatui::layout::Alignment;
 use ratatui::text::Line;
 use ratatui::widgets::{Block, BorderType, Borders, Row, Table, TableState};
 use ratatui::{buffer::Buffer, layout::Rect, widgets::StatefulWidget};
-use snafu::{ResultExt, Snafu};
+use snafu::ResultExt;
 use tokio::sync::mpsc;
-use tokio::sync::mpsc::error::SendError;
 
 use crate::action::{Action, ActionError, CommandSendFailedSnafu, GetActionFailedSnafu};
 use crate::connectors::{ActionKind, ConnectorCommands, ConnectorName};
-use crate::mode::Mode;
+use crate::mode::KeyMode;
 use crate::settings::Settings;
-use crate::settings::keybindings::KeyBindingsError;
 use crate::settings::styles::StyleMode;
 use crate::torrent::{State, TorrentInfo};
 use crate::ui::components::torrent_list::cell::Cell;
@@ -144,7 +142,7 @@ impl TorrentList {
     ) -> Result<ActionResult, ActionError> {
         if let Some(action) = settings
             .keybindings
-            .action(Mode::TorrentList, key_event)
+            .action(KeyMode::TorrentList, key_event)
             .context(GetActionFailedSnafu)?
         {
             match action {
@@ -157,10 +155,11 @@ impl TorrentList {
                 Action::Pause => self.pause(connectors).await,
                 Action::Start => self.start(connectors).await,
                 Action::PauseToggle => self.pause_toggle(connectors).await,
-                _ => Ok(ActionResult::Unhandled),
+                Action::Next => Ok(ActionResult::Unhandled(Action::Help)),
+                _ => Ok(ActionResult::Unhandled(action)),
             }
         } else {
-            Ok(ActionResult::Unhandled)
+            Ok(ActionResult::Unhandled(Action::default()))
         }
     }
 
@@ -235,7 +234,7 @@ impl TorrentList {
                     torrent_info.state = State::Active;
                     kind = ActionKind::Start;
                 }
-                _ => {}
+                _ => torrent_info.state = State::Paused,
             }
             let command = ConnectorCommands::Action {
                 kind,

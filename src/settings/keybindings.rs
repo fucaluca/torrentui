@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use serde::Deserialize;
 use snafu::Snafu;
 
-use crate::{action::Action, mode::Mode};
+use crate::{action::Action, mode::KeyMode};
 
 #[derive(Debug, Default)]
 pub struct KeyBindingsNode {
@@ -12,13 +12,6 @@ pub struct KeyBindingsNode {
     pub action: Action,
     pub description: Option<String>,
     pub next: IndexMap<KeyEvent, KeyBindingsNode>,
-}
-
-#[cfg(test)]
-impl KeyBindingsNode {
-    pub fn set_action(&mut self, action: Action) {
-        self.action = action;
-    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -35,23 +28,32 @@ pub enum KeyBindingValue {
 
 #[derive(Debug, Default)]
 pub struct KeyBindings {
-    map: IndexMap<Mode, KeyBindingsNode>,
+    map: IndexMap<KeyMode, KeyBindingsNode>,
     current_sequence: Vec<KeyEvent>,
 }
 
 #[derive(Debug, Snafu)]
 pub enum KeyBindingsError {
     #[snafu(display("Key mode {:?} not found. Available key modes: {:?}", mode, keys))]
-    GetModeFailed { mode: Mode, keys: Vec<Mode> },
+    GetModeFailed { mode: KeyMode, keys: Vec<KeyMode> },
 }
 
 impl KeyBindings {
-    pub fn get_node(&self, mode: &Mode) -> Option<&KeyBindingsNode> {
-        self.map.get(mode)
+    pub fn get_current_node(&self, mode: &KeyMode) -> Option<&KeyBindingsNode> {
+        let root = self.map.get(mode)?;
+        let mut current = root;
+        for key in &self.current_sequence {
+            if let Some(next) = current.next.get(key) {
+                current = next;
+            } else {
+                return Some(root);
+            }
+        }
+        Some(current)
     }
     pub fn action(
         &mut self,
-        mode: Mode,
+        mode: KeyMode,
         key_event: KeyEvent,
     ) -> Result<Option<Action>, KeyBindingsError> {
         let root = self.map.get(&mode).ok_or_else(|| {
@@ -72,7 +74,7 @@ impl KeyBindings {
             self.current_sequence.clear();
             Ok(Some(current_node.action))
         } else {
-            Ok(Some(Action::NoOp))
+            Ok(Some(Action::Next))
         }
     }
 }
@@ -83,11 +85,22 @@ impl<'de> Deserialize<'de> for KeyBindings {
         D: serde::Deserializer<'de>,
     {
         let parsed_map =
-            IndexMap::<Mode, IndexMap<String, KeyBindingValue>>::deserialize(deserializer)?;
+            IndexMap::<KeyMode, IndexMap<String, KeyBindingValue>>::deserialize(deserializer)?;
         let bindings = parsed_map
             .into_iter()
             .map(|(mode, inner_map)| {
                 let mut root_bindings = KeyBindingsNode::default();
+                let mut esc_node = KeyBindingsNode::from(KeyBindingValue::Simple(Action::Escape));
+                esc_node.display = "esc".into();
+                root_bindings
+                    .next
+                    .insert(KeyEvent::new(KeyCode::Esc, KeyModifiers::SHIFT), esc_node);
+                let mut quit_node = KeyBindingsNode::from(KeyBindingValue::Simple(Action::Quit));
+                quit_node.display = "Q".into();
+                root_bindings.next.insert(
+                    KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::SHIFT),
+                    quit_node,
+                );
 
                 for (raw, value) in inner_map {
                     let key_events = parse_key_sequence(&raw).map_err(serde::de::Error::custom)?;
@@ -245,11 +258,8 @@ fn parse_key_code_with_modifiers(
 }
 
 #[cfg(test)]
-pub mod test_utils;
-
-#[cfg(test)]
 mod tests {
-    use super::{Action, KeyBindingsNode, KeyCode, KeyEvent, KeyModifiers, Mode};
+    use super::{Action, KeyBindingsNode, KeyCode, KeyEvent, KeyMode, KeyModifiers};
     use crate::settings::{ConfigSource, Settings};
     use pretty_assertions::assert_eq;
 
@@ -265,7 +275,7 @@ mod tests {
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .map
-            .get(&Mode::TorrentList)
+            .get(&KeyMode::TorrentList)
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
         assert_eq!(keybindings.action, Action::Quit);
@@ -286,7 +296,7 @@ mod tests {
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .map
-            .get(&Mode::TorrentList)
+            .get(&KeyMode::TorrentList)
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
 
@@ -309,7 +319,7 @@ mod tests {
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .map
-            .get(&Mode::TorrentList)
+            .get(&KeyMode::TorrentList)
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
 
@@ -332,7 +342,7 @@ mod tests {
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .map
-            .get(&Mode::TorrentList)
+            .get(&KeyMode::TorrentList)
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
 
@@ -355,7 +365,7 @@ mod tests {
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .map
-            .get(&Mode::TorrentList)
+            .get(&KeyMode::TorrentList)
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
 
@@ -380,11 +390,11 @@ mod tests {
         let keybindings: &KeyBindingsNode = settings
             .keybindings
             .map
-            .get(&Mode::TorrentList)
+            .get(&KeyMode::TorrentList)
             .and_then(|k| k.next.get(&key_event1))
             .unwrap_or_else(|| panic!("KeyEvent {key_event1:#?} not found"));
 
-        assert_eq!(keybindings.action, Action::NoOp);
+        assert_eq!(keybindings.action, Action::Next);
         assert_eq!(keybindings.description, None);
         assert_eq!(keybindings.next.is_empty(), false);
 
@@ -415,11 +425,11 @@ mod tests {
         let keybindings = settings
             .keybindings
             .map
-            .get(&Mode::TorrentList)
+            .get(&KeyMode::TorrentList)
             .and_then(|k| k.next.get(&key_event1))
             .unwrap_or_else(|| panic!("KeyEvent {key_event1:#?} not found"));
 
-        assert_eq!(keybindings.action, Action::NoOp);
+        assert_eq!(keybindings.action, Action::Next);
         assert_eq!(keybindings.description, Some("Add".to_string()));
         assert_eq!(keybindings.next.is_empty(), false);
 

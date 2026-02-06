@@ -7,7 +7,7 @@ use ratatui::{
 };
 
 use crate::{
-    keybindings_trie::ConnectorEvents,
+    connectors::ConnectorEvents,
     settings::{Settings, styles::StyleMode},
     ui::Drawable,
 };
@@ -74,6 +74,7 @@ impl Notifications {
         self.notification = n.into();
     }
 
+    #[cfg_attr(not(test), expect(dead_code))]
     pub fn on_user_interaction(&mut self) {
         if self.notification.is_some() {
             self.last_interaction = Some(Instant::now());
@@ -95,7 +96,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use crate::{
-        keybindings_trie::ConnectorEvents,
+        connectors::ConnectorEvents,
         settings::{ConfigSource, Settings},
         ui::{Notifications, notifications::Notification},
     };

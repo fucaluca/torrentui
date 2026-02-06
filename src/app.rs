@@ -9,20 +9,26 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     action::Action,
     connector_worker::ConnectorWorker,
-    connectors::ConnectorCommands,
-    keybindings_trie::{ConnectorEvents, KeyBindingsTrie},
-    mode::Mode,
+    connectors::{ConnectorCommands, ConnectorEvents},
+    mode::KeyMode,
     settings::{ConfigSource, Settings, get_config_dir},
     terminal::{self, Event, Tui},
     ui::{self, ActionResult, Drawable},
 };
+
+#[derive(Debug, Default)]
+pub enum CurrentScreen {
+    #[default]
+    TorrentList,
+    AddTorrent,
+}
 
 pub struct App {
     should_quit: bool,
     settings: Settings,
     connectors: HashMap<String, mpsc::Sender<ConnectorCommands>>,
     components: ui::Components,
-    mode: Mode,
+    current_screen: CurrentScreen,
     tui: Tui,
 }
 impl App {
@@ -30,7 +36,7 @@ impl App {
         let config_file_path = get_config_dir().join("config.toml");
         let config_source = ConfigSource::File(config_file_path);
         let settings = Settings::new(config_source)?;
-        let mode = Mode::default();
+        let mode = CurrentScreen::default();
 
         let tui = Tui::new()?;
         Ok(Self {
@@ -38,7 +44,7 @@ impl App {
             components: ui::Components::new(),
             settings,
             connectors: HashMap::new(),
-            mode,
+            current_screen: mode,
             tui,
         })
     }
@@ -80,8 +86,8 @@ impl App {
             let area = frame.area();
             let buffer = frame.buffer_mut();
             let [content_area, notification_area] = main_area.areas(area);
-            match self.mode {
-                Mode::AddTorrent => {
+            match self.current_screen {
+                CurrentScreen::AddTorrent => {
                     self.components
                         .add_torrent
                         .draw(buffer, content_area, &self.settings);
@@ -134,14 +140,14 @@ impl App {
     }
 
     async fn handle_key_events(&mut self, key_event: KeyEvent) -> Result<()> {
-        let result = match self.mode {
-            Mode::TorrentList => {
+        let result = match self.current_screen {
+            CurrentScreen::TorrentList => {
                 self.components
                     .torrent_list
                     .handle_key_events(key_event, &mut self.settings, &mut self.connectors)
                     .await?
             }
-            Mode::AddTorrent => {
+            CurrentScreen::AddTorrent => {
                 self.components
                     .add_torrent
                     .handle_key_events(key_event, &mut self.settings, &mut self.connectors)
@@ -149,27 +155,28 @@ impl App {
             }
         };
         match result {
-            ActionResult::Handled => {}
-            ActionResult::Unhandled => {
-                if let Some(action) = self
-                    .settings
-                    .keybindings
-                    .action(Mode::default(), key_event)?
-                {
-                    match action {
-                        Action::Quit => self.should_quit = true,
-                        Action::AddTorrent => self.mode = Mode::AddTorrent,
-                        Action::Help => self.show_help()?,
-                        _ => {}
+            ActionResult::Unhandled(action) => match action {
+                Action::Quit => self.should_quit = true,
+                Action::AddTorrent => self.current_screen = CurrentScreen::AddTorrent,
+                Action::Help => self.show_help(&KeyMode::default())?,
+                Action::Escape => {
+                    if self.components.which_key.is_empty() {
+                        self.current_screen = CurrentScreen::default();
+                    } else {
+                        self.components.which_key.clear();
                     }
                 }
+                _ => {}
+            },
+            ActionResult::Handled => {
+                self.components.which_key.clear();
             }
         }
         Ok(())
     }
 
-    fn show_help(&mut self) -> Result<()> {
-        if let Some(node) = self.settings.keybindings.get_node(&self.mode) {
+    fn show_help(&mut self, key_mode: &KeyMode) -> Result<()> {
+        if let Some(node) = self.settings.keybindings.get_current_node(key_mode) {
             self.components.which_key.update(node);
         }
         Ok(())

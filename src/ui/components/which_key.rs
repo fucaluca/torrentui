@@ -12,8 +12,14 @@ use crate::{
 
 const TITLE: &str = " Commands ";
 
+#[derive(Clone)]
+enum Desc {
+    Text(String),
+    Next(String),
+}
+
 pub struct WhichKey {
-    keys: Vec<(String, Option<String>)>,
+    keys: Vec<(String, Option<Desc>)>,
 }
 
 impl Drawable for WhichKey {
@@ -33,17 +39,30 @@ impl Drawable for WhichKey {
         let rows = self
             .keys
             .iter()
-            .map(|(key, desc)| {
-                let desc_span = match desc {
+            .filter_map(|(key, desc)| {
+                /* let desc_span = match desc {
                     Some(txt) => Span::from(txt.clone()).style(desc_style),
                     None => Span::from("+").style(next_style),
-                };
-                Row::new(vec![
+                }; */
+                let desc_span = desc.clone().map(|v| match v {
+                    Desc::Text(txt) => Span::from(txt).style(desc_style),
+                    Desc::Next(txt) => Span::from(txt).style(next_style),
+                })?;
+
+                Some(Row::new(vec![
                     Text::from(Span::from(key.clone()))
                         .style(key_style)
                         .alignment(Alignment::Right),
                     Text::from(desc_span),
-                ])
+                ]))
+                /* if let Some(txt) = desc {
+                    Row::new(vec![
+                        Text::from(Span::from(key.clone()))
+                            .style(key_style)
+                            .alignment(Alignment::Right),
+                        Text::from(desc_span),
+                    ])
+                } */
             })
             .collect::<Vec<Row>>();
 
@@ -83,14 +102,20 @@ impl WhichKey {
         self.keys.clear();
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.keys.is_empty()
+    }
+
     pub fn update(&mut self, node: &KeyBindingsNode) {
         self.keys.clear();
         for (_, next_node) in &node.next {
             let description = match next_node.description.clone() {
-                Some(desc) => Some(desc),
+                Some(desc) => Some(Desc::Text(desc)),
                 None => match next_node.action {
+                    // Action::Next => Some("+".into()),
+                    Action::Next => Some(Desc::Next("+".into())),
                     Action::NoOp => None,
-                    a => Some(a.to_string()),
+                    a => Some(Desc::Text(a.to_string())),
                 },
             };
             self.keys.push((next_node.display.clone(), description));
@@ -129,7 +154,9 @@ impl WhichKey {
             .keys
             .iter()
             .filter_map(|(_, desc)| desc.as_ref())
-            .map(|desc| desc.chars().count())
+            .map(|desc| match desc {
+                Desc::Text(txt) | Desc::Next(txt) => txt.chars().count(),
+            })
             .max()
             .unwrap_or(0);
 
@@ -259,7 +286,7 @@ mod tests {
         };
         let mut node1 = KeyBindingsNode {
             display: "q".into(),
-            action: Action::NoOp,
+            action: Action::Next,
             description: None,
             next: IndexMap::new(),
         };

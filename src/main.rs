@@ -7,7 +7,6 @@ mod app;
 mod connector_worker;
 mod connectors;
 mod errors;
-mod keybindings_trie;
 mod mode;
 mod settings;
 mod terminal;

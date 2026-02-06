@@ -4,8 +4,7 @@ use tokio::{sync::mpsc, task::JoinHandle};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    connectors::{ActionKind, ConnectorCommands},
-    keybindings_trie::ConnectorEvents,
+    connectors::{ActionKind, ConnectorCommands, ConnectorEvents},
     settings::connectors::ConfiguredConnector,
 };
 
@@ -138,8 +137,7 @@ mod tests {
 
     use crate::{
         connector_worker::ConnectorWorker,
-        connectors::{ActionKind, ConnectorCommands, MockConnector},
-        keybindings_trie::ConnectorEvents,
+        connectors::{ActionKind, ConnectorCommands, ConnectorEvents, MockConnector},
         settings::connectors::ConfiguredConnector,
         torrent::{self, InfoHash, TorrentInfo},
     };
