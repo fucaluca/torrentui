@@ -90,17 +90,6 @@ impl<'de> Deserialize<'de> for KeyBindings {
             .into_iter()
             .map(|(mode, inner_map)| {
                 let mut root_bindings = KeyBindingsNode::default();
-                let mut esc_node = KeyBindingsNode::from(KeyBindingValue::Simple(Action::Escape));
-                esc_node.display = "esc".into();
-                root_bindings
-                    .next
-                    .insert(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE), esc_node);
-                let mut quit_node = KeyBindingsNode::from(KeyBindingValue::Simple(Action::Quit));
-                quit_node.display = "Q".into();
-                root_bindings.next.insert(
-                    KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::SHIFT),
-                    quit_node,
-                );
 
                 for (raw, value) in inner_map {
                     let key_events = parse_key_sequence(&raw).map_err(serde::de::Error::custom)?;
@@ -108,6 +97,19 @@ impl<'de> Deserialize<'de> for KeyBindings {
                     add_binding_to_tree(&mut root_bindings, key_events, value);
                 }
 
+                // TODO: add to default config and remove it
+                let mut esc_node = KeyBindingsNode::from(KeyBindingValue::Simple(Action::Escape));
+                esc_node.display = "esc".into();
+                root_bindings
+                    .next
+                    .insert(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE), esc_node);
+
+                let mut quit_node = KeyBindingsNode::from(KeyBindingValue::Simple(Action::Quit));
+                quit_node.display = "Q".into();
+                root_bindings.next.insert(
+                    KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::SHIFT),
+                    quit_node,
+                );
                 Ok((mode, root_bindings))
             })
             .collect::<Result<IndexMap<_, _>, D::Error>>()?;

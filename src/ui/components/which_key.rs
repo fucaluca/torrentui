@@ -38,7 +38,9 @@ impl Description {
             next_symbol = assets::Symbols::WHICHKEY_NEXT_SYMBOL.to_string();
             desc_txt = self.key_desc.clone().unwrap_or_default();
         } else {
-            desc_style = settings.styles.get_style(&StyleMode::WhichKey, "desc");
+            desc_style = settings
+                .styles
+                .get_style(&StyleMode::WhichKey, "description");
             next_symbol = "".to_string();
             desc_txt = self.key_desc.clone().unwrap_or(self.action.to_string());
         }

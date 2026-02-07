@@ -27,7 +27,6 @@ pub struct AddTorrent {
     display_text: String,
     #[expect(unused)]
     cursor_position: usize,
-    #[expect(unused)]
     input_mode: bool,
 }
 
@@ -92,23 +91,44 @@ impl AddTorrent {
     }
 
     pub async fn handle_key_events(
-        &self,
+        &mut self,
         key_event: KeyEvent,
         settings: &mut Settings,
         #[expect(unused)] connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
     ) -> Result<ActionResult, ActionError> {
-        if let Some(action) = settings
+        use Action::*;
+        let maybe_action = settings
             .keybindings
             .action(KeyMode::AddTorrent, key_event)
-            .context(GetActionFailedSnafu)?
-        {
-            Ok(ActionResult::Unhandled(action))
+            .context(GetActionFailedSnafu)?;
+        if self.input_mode {
+            match maybe_action {
+                Some(Escape) => {
+                    self.input_mode = false;
+                    Ok(ActionResult::Handled)
+                }
+                Some(Backspace) => {
+                    self.display_text.pop();
+                    Ok(ActionResult::Handled)
+                }
+                Some(_) | None => {
+                    self.input(key_event.code);
+                    Ok(ActionResult::Handled)
+                }
+            }
+        } else if let Some(action) = maybe_action {
+            match action {
+                Input => {
+                    self.input_mode = true;
+                    Ok(ActionResult::Handled)
+                }
+                _ => Ok(ActionResult::Unhandled(action)),
+            }
         } else {
-            Ok(ActionResult::Unhandled(Action::default()))
+            Ok(ActionResult::Unhandled(Action::NoOp))
         }
     }
 
-    #[expect(unused)]
     pub fn input(&mut self, key_code: KeyCode) {
         #[expect(clippy::single_match)]
         match key_code {
