@@ -157,21 +157,37 @@ impl App {
         match result {
             ActionResult::Unhandled(action) => match action {
                 Action::Quit => self.should_quit = true,
-                Action::AddTorrent => self.current_screen = CurrentScreen::AddTorrent,
-                Action::Help => self.show_help(&KeyMode::default())?,
-                Action::Escape => {
-                    if self.components.which_key.is_empty() {
-                        self.current_screen = CurrentScreen::default();
-                    } else {
-                        self.components.which_key.clear();
+                Action::AddTorrent => self.switch_screen(CurrentScreen::AddTorrent),
+                Action::Help => self.show_help_on_current_screen()?,
+                Action::Next => {
+                    if self.settings.show_help_auto {
+                        self.show_help_on_current_screen()?;
                     }
                 }
-                _ => {}
+                Action::Escape => {
+                    if self.components.which_key.visible() {
+                        self.current_screen = CurrentScreen::default();
+                    } else {
+                        self.components.which_key.hide();
+                    }
+                }
+                _ => self.components.which_key.hide(),
             },
             ActionResult::Handled => {
-                self.components.which_key.clear();
+                self.components.which_key.hide();
             }
         }
+        Ok(())
+    }
+
+    fn switch_screen(&mut self, screen: CurrentScreen) {
+        self.components.which_key.hide();
+        self.current_screen = screen;
+    }
+
+    fn show_help_on_current_screen(&mut self) -> Result<()> {
+        let key_mode = KeyMode::from(&self.current_screen);
+        self.show_help(&key_mode)?;
         Ok(())
     }
 

@@ -7,19 +7,68 @@ use ratatui::{
 use crate::{
     action::Action,
     settings::{Settings, keybindings::KeyBindingsNode, styles::StyleMode},
-    ui::Drawable,
+    ui::{Drawable, assets},
 };
 
 const TITLE: &str = " Commands ";
 
-#[derive(Clone)]
-enum Desc {
-    Text(String),
-    Next(String),
+struct Description {
+    action: Action,
+    key_display: String,
+    key_desc: Option<String>,
+}
+impl Description {
+    fn new(action: Action, key_display: String, key_desc: Option<String>) -> Self {
+        Self {
+            action,
+            key_display,
+            key_desc,
+        }
+    }
+    fn build_row(&self, settings: &Settings) -> Row<'_> {
+        let key_style = settings.styles.get_style(&StyleMode::WhichKey, "key");
+        let next_style = settings.styles.get_style(&StyleMode::WhichKey, "next");
+        let divider_style = settings.styles.get_style(&StyleMode::WhichKey, "divider");
+
+        let desc_style;
+        let next_symbol;
+        let desc_txt;
+        if matches!(self.action, Action::Next) {
+            desc_style = next_style;
+            next_symbol = assets::Symbols::WHICHKEY_NEXT_SYMBOL.to_string();
+            desc_txt = self.key_desc.clone().unwrap_or_default();
+        } else {
+            desc_style = settings.styles.get_style(&StyleMode::WhichKey, "desc");
+            next_symbol = "".to_string();
+            desc_txt = self.key_desc.clone().unwrap_or(self.action.to_string());
+        }
+
+        let display = match self.key_display.clone().as_str() {
+            "up" => "󰛃",
+            "down" => "󰛀",
+            "left" => "󰛁",
+            "right" => "󰛂",
+            d => d,
+        }
+        .to_owned();
+
+        Row::new(vec![
+            Text::from(Span::from(display))
+                .style(key_style)
+                .alignment(Alignment::Right),
+            Text::from(
+                Span::from(assets::Icons::WHICHKEY_DIVIDER.to_string()).style(divider_style),
+            ),
+            Text::from(Line::from(vec![
+                Span::from(next_symbol).style(next_style),
+                Span::from(desc_txt).style(desc_style),
+            ])),
+        ])
+    }
 }
 
 pub struct WhichKey {
-    keys: Vec<(String, Option<Desc>)>,
+    keys: Vec<Description>,
 }
 
 impl Drawable for WhichKey {
@@ -32,97 +81,79 @@ impl Drawable for WhichKey {
         if self.keys.is_empty() {
             return;
         }
-        let key_style = settings.styles.get_style(&StyleMode::WhichKey, "key");
-        let desc_style = settings.styles.get_style(&StyleMode::WhichKey, "desc");
-        let next_style = settings.styles.get_style(&StyleMode::WhichKey, "next");
         let default_style = settings.styles.get_style(&StyleMode::WhichKey, "default");
+
         let rows = self
             .keys
             .iter()
-            .filter_map(|(key, desc)| {
-                /* let desc_span = match desc {
-                    Some(txt) => Span::from(txt.clone()).style(desc_style),
-                    None => Span::from("+").style(next_style),
-                }; */
-                let desc_span = desc.clone().map(|v| match v {
-                    Desc::Text(txt) => Span::from(txt).style(desc_style),
-                    Desc::Next(txt) => Span::from(txt).style(next_style),
-                })?;
-
-                Some(Row::new(vec![
-                    Text::from(Span::from(key.clone()))
-                        .style(key_style)
-                        .alignment(Alignment::Right),
-                    Text::from(desc_span),
-                ]))
-                /* if let Some(txt) = desc {
-                    Row::new(vec![
-                        Text::from(Span::from(key.clone()))
-                            .style(key_style)
-                            .alignment(Alignment::Right),
-                        Text::from(desc_span),
-                    ])
-                } */
+            .filter_map(|desc| {
+                if matches!(desc.action, Action::NoOp) {
+                    None
+                } else {
+                    Some(desc.build_row(settings))
+                }
             })
             .collect::<Vec<Row>>();
 
-        let height = self.keys.len() + 2;
         let (width_left, width_right) = self.calculate_max_char_widths();
-        let width = width_left.max(2) + width_right.max(2) + 5;
+        let divider_len = assets::Icons::WHICHKEY_DIVIDER.len_utf8();
+
         let widths = [
             Constraint::Min(width_left as u16),
+            Constraint::Length(divider_len as u16),
             Constraint::Min(width_right as u16),
         ];
+
         let table = Table::new(rows, widths)
-            .block(
-                Block::default()
-                    .title(TITLE)
-                    .title_bottom(
-                        Line::from(format!(" v{} ", env!("CARGO_PKG_VERSION"))).right_aligned(),
-                    )
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .padding(Padding::new(1, 1, 0, 0)),
-            )
+            .block(self.create_block())
             .style(default_style);
 
-        let bottom_area =
+        let width = width_left.max(2) + divider_len + width_right.max(2) + 4;
+        let height = self.keys.len() + 2;
+
+        let whichkey_area =
             self.bottom_right_rect(width.max(TITLE.len() + 2) as u16, height as u16, area);
-        Clear.render(bottom_area, buf);
-        table.render(bottom_area, buf);
+
+        Clear.render(whichkey_area, buf);
+        table.render(whichkey_area, buf);
     }
 }
 
 impl WhichKey {
     pub fn new() -> Self {
-        Self { keys: vec![] }
+        Self { keys: Vec::new() }
     }
 
-    pub fn clear(&mut self) {
+    pub fn hide(&mut self) {
         self.keys.clear();
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub fn visible(&self) -> bool {
         self.keys.is_empty()
     }
 
     pub fn update(&mut self, node: &KeyBindingsNode) {
         self.keys.clear();
         for (_, next_node) in &node.next {
-            let description = match next_node.description.clone() {
-                Some(desc) => Some(Desc::Text(desc)),
-                None => match next_node.action {
-                    // Action::Next => Some("+".into()),
-                    Action::Next => Some(Desc::Next("+".into())),
-                    Action::NoOp => None,
-                    a => Some(Desc::Text(a.to_string())),
-                },
-            };
-            self.keys.push((next_node.display.clone(), description));
+            let description = Description::new(
+                next_node.action,
+                next_node.display.clone(),
+                next_node.description.clone(),
+            );
+            self.keys.push(description);
         }
     }
 
-    fn bottom_right_rect(&self, width: u16, height: u16, r: Rect) -> Rect {
+    fn create_block(&self) -> Block<'_> {
+        Block::default()
+            .title(TITLE)
+            .title_bottom(Line::from(format!(" v{} ", env!("CARGO_PKG_VERSION"))).right_aligned())
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
+            .padding(Padding::new(1, 1, 0, 0))
+    }
+
+    fn bottom_right_rect(&self, width: u16, height: u16, area: Rect) -> Rect {
         let popup_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -130,7 +161,7 @@ impl WhichKey {
                 Constraint::Min(0),
                 Constraint::Length(height),
             ])
-            .split(r);
+            .split(area);
 
         Layout::default()
             .direction(Direction::Horizontal)
@@ -143,24 +174,32 @@ impl WhichKey {
     }
 
     fn calculate_max_char_widths(&self) -> (usize, usize) {
-        let max_first = self
+        let max_left = self
             .keys
             .iter()
-            .map(|(key, _)| key.chars().count())
+            .map(|desc| desc.key_display.chars().count())
             .max()
             .unwrap_or(0);
 
-        let max_second = self
+        let max_right = self
             .keys
             .iter()
-            .filter_map(|(_, desc)| desc.as_ref())
-            .map(|desc| match desc {
-                Desc::Text(txt) | Desc::Next(txt) => txt.chars().count(),
+            .map(|desc| {
+                let mut width = desc
+                    .key_desc
+                    .clone()
+                    .unwrap_or(desc.action.to_string())
+                    .chars()
+                    .count();
+                if matches!(desc.action, Action::Next) {
+                    width += assets::Symbols::WHICHKEY_NEXT_SYMBOL.chars().count()
+                }
+                width
             })
             .max()
             .unwrap_or(0);
 
-        (max_first, max_second)
+        (max_left, max_right)
     }
 }
 

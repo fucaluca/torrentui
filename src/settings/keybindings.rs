@@ -94,7 +94,7 @@ impl<'de> Deserialize<'de> for KeyBindings {
                 esc_node.display = "esc".into();
                 root_bindings
                     .next
-                    .insert(KeyEvent::new(KeyCode::Esc, KeyModifiers::SHIFT), esc_node);
+                    .insert(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE), esc_node);
                 let mut quit_node = KeyBindingsNode::from(KeyBindingValue::Simple(Action::Quit));
                 quit_node.display = "Q".into();
                 root_bindings.next.insert(

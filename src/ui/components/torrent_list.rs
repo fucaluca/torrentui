@@ -155,11 +155,10 @@ impl TorrentList {
                 Action::Pause => self.pause(connectors).await,
                 Action::Start => self.start(connectors).await,
                 Action::PauseToggle => self.pause_toggle(connectors).await,
-                Action::Next => Ok(ActionResult::Unhandled(Action::Help)),
                 _ => Ok(ActionResult::Unhandled(action)),
             }
         } else {
-            Ok(ActionResult::Unhandled(Action::default()))
+            Ok(ActionResult::Unhandled(Action::NoOp))
         }
     }
 

@@ -23,6 +23,8 @@ pub struct Settings {
     pub styles: Styles,
     #[serde(default = "defaults::notification_timeout_millis")]
     pub notification_timeout_millis: u64,
+    #[serde(default = "defaults::show_help_auto")]
+    pub show_help_auto: bool,
 }
 
 #[derive(Debug)]

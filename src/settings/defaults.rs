@@ -9,3 +9,7 @@ pub fn notification_timeout_millis() -> u64 {
 pub fn connector_selected() -> bool {
     false
 }
+
+pub fn show_help_auto() -> bool {
+    true
+}
