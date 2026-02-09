@@ -109,7 +109,20 @@ impl AddTorrent {
                     Ok(ActionResult::Handled)
                 }
                 Some(Backspace) => {
-                    if self.value.chars().count() > 0 && self.cursor_position > 0 {
+                    if let Some(start) = self.selection_start {
+                        self.value = self
+                            .value
+                            .chars()
+                            .enumerate()
+                            .filter(|(i, _)| {
+                                i < &start.min(self.cursor_position)
+                                    || i >= &self.cursor_position.max(start)
+                            })
+                            .map(|s| s.1)
+                            .collect();
+                        self.cursor_position = start.min(self.cursor_position);
+                        self.selection_start = None;
+                    } else if self.value.chars().count() > 0 && self.cursor_position > 0 {
                         self.value.remove(self.cursor_position.saturating_sub(1));
                         self.cursor_position = self.cursor_position.saturating_sub(1);
                     }
@@ -165,6 +178,26 @@ impl AddTorrent {
                         self.cursor_position = self.value.chars().count();
                     } else {
                         self.selection_start = Some(0)
+                    }
+                    Ok(ActionResult::Handled)
+                }
+                Backspace => {
+                    if let Some(start) = self.selection_start {
+                        self.value = self
+                            .value
+                            .chars()
+                            .enumerate()
+                            .filter(|(i, _)| {
+                                i < &start.min(self.cursor_position)
+                                    || i >= &self.cursor_position.max(start)
+                            })
+                            .map(|s| s.1)
+                            .collect();
+                        self.cursor_position = start.min(self.cursor_position);
+                        self.selection_start = None;
+                    } else if self.value.chars().count() > 0 && self.cursor_position > 0 {
+                        self.value.remove(self.cursor_position.saturating_sub(1));
+                        self.cursor_position = self.cursor_position.saturating_sub(1);
                     }
                     Ok(ActionResult::Handled)
                 }
