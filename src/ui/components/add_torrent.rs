@@ -66,7 +66,7 @@ impl Drawable for AddTorrent {
             .split(inner_area);
 
         if let Some(start) = self.selection_start {
-            for i in start..self.cursor_position {
+            for i in start.min(self.cursor_position)..=self.cursor_position.max(start) {
                 if let Some(cell) = buf.cell_mut((chunks[0].x + i as u16, chunks[0].y)) {
                     cell.set_style(Style::default().fg(Color::Blue).bg(Color::White));
                 }
@@ -149,6 +149,14 @@ impl AddTorrent {
                 }
                 Right => {
                     self.cursor_position = self.value.chars().count().min(self.cursor_position + 1);
+                    Ok(ActionResult::Handled)
+                }
+                Select => {
+                    if self.selection_start.is_some() {
+                        self.selection_start = None;
+                    } else {
+                        self.selection_start = Some(self.cursor_position);
+                    }
                     Ok(ActionResult::Handled)
                 }
                 SelectAll => {
