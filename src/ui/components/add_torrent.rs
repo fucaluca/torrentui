@@ -101,7 +101,7 @@ impl AddTorrent {
                     Ok(ActionResult::Handled)
                 }
                 Some(_) | None => {
-                    self.input(key_event.code);
+                    self.insert(key_event.code);
                     Ok(ActionResult::Handled)
                 }
             }
@@ -131,11 +131,11 @@ impl AddTorrent {
         result
     }
 
-    pub fn input(&mut self, key_code: KeyCode) {
+    pub fn insert(&mut self, key_code: KeyCode) {
         #[expect(clippy::single_match)]
         match key_code {
-            KeyCode::Char(ch) => {
-                self.value.push(ch);
+            KeyCode::Char(char) => {
+                self.value.insert(self.cursor_position, char);
                 self.cursor_position += 1;
             }
             _ => {}
