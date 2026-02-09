@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Style},
     text::Line,
     widgets::{Block, BorderType, Borders, Clear, Paragraph, Row, Table, TableState, Widget},
 };
@@ -34,6 +35,7 @@ pub struct AddTorrent {
     table_state: TableState,
     value: String,
     display_text: String,
+    selection_start: Option<usize>,
     cursor_position: usize,
     input_mode: bool,
 }
@@ -62,6 +64,14 @@ impl Drawable for AddTorrent {
                 Constraint::Min(3),
             ])
             .split(inner_area);
+
+        if let Some(start) = self.selection_start {
+            for i in start..self.cursor_position {
+                if let Some(cell) = buf.cell_mut((chunks[0].x + i as u16, chunks[0].y)) {
+                    cell.set_style(Style::default().fg(Color::Blue).bg(Color::White));
+                }
+            }
+        }
 
         Paragraph::new(self.display_text.clone()).render(chunks[0], buf);
         Line::from(Symbols::ROW_DIVIDER.repeat(chunks[1].width as usize)).render(chunks[1], buf);
@@ -93,12 +103,24 @@ impl AddTorrent {
             match maybe_action {
                 Some(Escape) => {
                     self.input_mode = false;
+                    if self.selection_start.is_some() {
+                        self.selection_start = None;
+                    }
                     Ok(ActionResult::Handled)
                 }
                 Some(Backspace) => {
                     if self.value.chars().count() > 0 && self.cursor_position > 0 {
                         self.value.remove(self.cursor_position.saturating_sub(1));
                         self.cursor_position = self.cursor_position.saturating_sub(1);
+                    }
+                    Ok(ActionResult::Handled)
+                }
+                Some(SelectAll) => {
+                    if self.selection_start.is_some() {
+                        self.selection_start = Some(0);
+                        self.cursor_position = self.value.chars().count();
+                    } else {
+                        self.selection_start = Some(0)
                     }
                     Ok(ActionResult::Handled)
                 }
@@ -109,6 +131,14 @@ impl AddTorrent {
             }
         } else if let Some(action) = maybe_action {
             match action {
+                Escape => {
+                    if self.selection_start.is_some() {
+                        self.selection_start = None;
+                        Ok(ActionResult::Handled)
+                    } else {
+                        Ok(ActionResult::Unhandled(action))
+                    }
+                }
                 Input => {
                     self.input_mode = true;
                     Ok(ActionResult::Handled)
@@ -119,6 +149,15 @@ impl AddTorrent {
                 }
                 Right => {
                     self.cursor_position = self.value.chars().count().min(self.cursor_position + 1);
+                    Ok(ActionResult::Handled)
+                }
+                SelectAll => {
+                    if self.selection_start.is_some() {
+                        self.selection_start = Some(0);
+                        self.cursor_position = self.value.chars().count();
+                    } else {
+                        self.selection_start = Some(0)
+                    }
                     Ok(ActionResult::Handled)
                 }
                 _ => Ok(ActionResult::Unhandled(action)),
