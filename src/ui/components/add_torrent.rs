@@ -97,7 +97,7 @@ impl AddTorrent {
                 }
                 Some(Backspace) => {
                     self.value.pop();
-                    self.cursor_position = self.cursor_position.max(1) - 1;
+                    self.cursor_position = self.cursor_position.saturating_sub(1);
                     Ok(ActionResult::Handled)
                 }
                 Some(_) | None => {
@@ -109,6 +109,14 @@ impl AddTorrent {
             match action {
                 Input => {
                     self.input_mode = true;
+                    Ok(ActionResult::Handled)
+                }
+                Left => {
+                    self.cursor_position = self.cursor_position.saturating_sub(1);
+                    Ok(ActionResult::Handled)
+                }
+                Right => {
+                    self.cursor_position = self.value.chars().count().min(self.cursor_position + 1);
                     Ok(ActionResult::Handled)
                 }
                 _ => Ok(ActionResult::Unhandled(action)),
