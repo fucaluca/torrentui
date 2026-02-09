@@ -60,23 +60,6 @@ impl Drawable for AddTorrent {
         // self.table.clone().render(chunks[2], buf);
         let table = self.build_table(settings);
         table.render(chunks[2], buf);
-
-        /* Widget::render(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded),
-            centered_area,
-            buf,
-        ); */
-        // Widget::render(
-        //     Paragraph::new(Text::from(vec![Line::from("asdf"), Line::from("iii")])).block(
-        //         Block::default()
-        //             .borders(Borders::ALL)
-        //             .border_type(ratatui::widgets::BorderType::Rounded),
-        //     ),
-        //     centered_area,
-        //     buf,
-        // );
     }
 }
 
