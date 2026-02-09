@@ -7,6 +7,7 @@ edition = "2024"
 description = "A TUI client for torrents. Forged in the Great Nicotine Liberation. Day 6."
 
 [dependencies]
+arboard = { version = "3.6.1", features = ["wl-clipboard-rs", "wayland-data-control"] }
 async-trait = "0.1.89"
 color-eyre = { version = "0.6.5" }
 config = { version = "0.15.19", features = ["preserve_order"] }

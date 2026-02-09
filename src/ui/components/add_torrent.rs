@@ -6,7 +6,7 @@ use ratatui::{
     text::Line,
     widgets::{Block, BorderType, Borders, Clear, Paragraph, Row, Table, TableState, Widget},
 };
-use snafu::ResultExt;
+use snafu::{ResultExt, Snafu};
 use tokio::sync::mpsc;
 
 #[expect(unused)]
@@ -19,13 +19,21 @@ use crate::{
 use crate::{
     action::{ActionError, GetActionFailedSnafu},
     mode::KeyMode,
+    ui::assets,
 };
 
+#[derive(Debug, Snafu)]
+pub enum AddTorrentError {
+    #[snafu(display("Failed to initialize clipboard"))]
+    ClipboardError { source: arboard::Error },
+}
+
+#[derive(Default)]
 pub struct AddTorrent {
     #[expect(unused)]
     table_state: TableState,
+    value: String,
     display_text: String,
-    #[expect(unused)]
     cursor_position: usize,
     input_mode: bool,
 }
@@ -57,7 +65,6 @@ impl Drawable for AddTorrent {
 
         Paragraph::new(self.display_text.clone()).render(chunks[0], buf);
         Line::from(Symbols::ROW_DIVIDER.repeat(chunks[1].width as usize)).render(chunks[1], buf);
-        // self.table.clone().render(chunks[2], buf);
         let table = self.build_table(settings);
         table.render(chunks[2], buf);
     }
@@ -66,10 +73,8 @@ impl Drawable for AddTorrent {
 impl AddTorrent {
     pub fn new() -> Self {
         Self {
-            table_state: TableState::default(),
-            display_text: String::new(),
-            input_mode: false,
-            cursor_position: 0,
+            display_text: String::from(assets::Symbols::CURSOR),
+            ..Default::default()
         }
     }
 
@@ -84,14 +89,15 @@ impl AddTorrent {
             .keybindings
             .action(KeyMode::AddTorrent, key_event)
             .context(GetActionFailedSnafu)?;
-        if self.input_mode {
+        let result = if self.input_mode {
             match maybe_action {
                 Some(Escape) => {
                     self.input_mode = false;
                     Ok(ActionResult::Handled)
                 }
                 Some(Backspace) => {
-                    self.display_text.pop();
+                    self.value.pop();
+                    self.cursor_position = self.cursor_position.max(1) - 1;
                     Ok(ActionResult::Handled)
                 }
                 Some(_) | None => {
@@ -109,13 +115,21 @@ impl AddTorrent {
             }
         } else {
             Ok(ActionResult::Unhandled(Action::NoOp))
-        }
+        };
+
+        self.display_text = self.value.clone();
+        self.display_text
+            .insert(self.cursor_position, assets::Symbols::CURSOR);
+        result
     }
 
     pub fn input(&mut self, key_code: KeyCode) {
         #[expect(clippy::single_match)]
         match key_code {
-            KeyCode::Char(ch) => self.display_text.push(ch),
+            KeyCode::Char(ch) => {
+                self.value.push(ch);
+                self.cursor_position += 1;
+            }
             _ => {}
         }
     }
