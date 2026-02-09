@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
+    buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Line,
@@ -24,6 +25,7 @@ use crate::{
 };
 
 #[derive(Debug, Snafu)]
+#[expect(unused)]
 pub enum AddTorrentError {
     #[snafu(display("Failed to initialize clipboard"))]
     ClipboardError { source: arboard::Error },
@@ -34,7 +36,6 @@ pub struct AddTorrent {
     #[expect(unused)]
     table_state: TableState,
     value: String,
-    display_text: String,
     selection_start: Option<usize>,
     cursor_position: usize,
     input_mode: bool,
@@ -65,15 +66,19 @@ impl Drawable for AddTorrent {
             ])
             .split(inner_area);
 
-        if let Some(start) = self.selection_start {
-            for i in start.min(self.cursor_position)..=self.cursor_position.max(start) {
-                if let Some(cell) = buf.cell_mut((chunks[0].x + i as u16, chunks[0].y)) {
-                    cell.set_style(Style::default().fg(Color::Blue).bg(Color::White));
-                }
-            }
-        }
+        let input_area = chunks[0];
+        let offset = self
+            .cursor_position
+            .saturating_sub((input_area.width - 1) as usize);
+        let mut display_text = self.value.chars().skip(offset).collect::<String>();
 
-        Paragraph::new(self.display_text.clone()).render(chunks[0], buf);
+        display_text.insert(
+            self.cursor_position.saturating_sub(offset),
+            assets::Symbols::CURSOR,
+        );
+        self.highlight_selected(offset, input_area, buf);
+
+        Paragraph::new(display_text.clone()).render(input_area, buf);
         Line::from(Symbols::ROW_DIVIDER.repeat(chunks[1].width as usize)).render(chunks[1], buf);
         let table = self.build_table(settings);
         table.render(chunks[2], buf);
@@ -83,8 +88,21 @@ impl Drawable for AddTorrent {
 impl AddTorrent {
     pub fn new() -> Self {
         Self {
-            display_text: String::from(assets::Symbols::CURSOR),
             ..Default::default()
+        }
+    }
+
+    fn highlight_selected(&mut self, skip: usize, area: Rect, buf: &mut Buffer) {
+        if let Some(start) = self.selection_start {
+            let start = start.saturating_sub(skip) as u16;
+            let end = self.cursor_position.saturating_sub(skip) as u16;
+
+            for i in start.min(end + 1)..end.max(start + 1) {
+                if let Some(cell) = buf.cell_mut((area.x + i, area.y)) {
+                    // TODO: get styles from config
+                    cell.set_style(Style::default().fg(Color::Blue).bg(Color::White));
+                }
+            }
         }
     }
 
@@ -99,7 +117,7 @@ impl AddTorrent {
             .keybindings
             .action(KeyMode::AddTorrent, key_event)
             .context(GetActionFailedSnafu)?;
-        let result = if self.input_mode {
+        if self.input_mode {
             match maybe_action {
                 Some(Escape) => {
                     self.input_mode = false;
@@ -205,12 +223,7 @@ impl AddTorrent {
             }
         } else {
             Ok(ActionResult::Unhandled(Action::NoOp))
-        };
-
-        self.display_text = self.value.clone();
-        self.display_text
-            .insert(self.cursor_position, assets::Symbols::CURSOR);
-        result
+        }
     }
 
     pub fn insert(&mut self, key_code: KeyCode) {
