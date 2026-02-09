@@ -96,8 +96,10 @@ impl AddTorrent {
                     Ok(ActionResult::Handled)
                 }
                 Some(Backspace) => {
-                    self.value.pop();
-                    self.cursor_position = self.cursor_position.saturating_sub(1);
+                    if self.value.chars().count() > 0 && self.cursor_position > 0 {
+                        self.value.remove(self.cursor_position.saturating_sub(1));
+                        self.cursor_position = self.cursor_position.saturating_sub(1);
+                    }
                     Ok(ActionResult::Handled)
                 }
                 Some(_) | None => {
