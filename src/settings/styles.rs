@@ -14,6 +14,7 @@ pub enum StyleMode {
     Table,
     Notification,
     WhichKey,
+    AddTorrent,
     #[default]
     Default,
 }
