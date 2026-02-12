@@ -4,9 +4,11 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style, Styled},
     text::Line,
-    widgets::{Block, BorderType, Borders, Clear, Paragraph, Row, Table, TableState, Widget},
+    widgets::{
+        Block, BorderType, Borders, Clear, Paragraph, Row, StatefulWidget, Table, TableState,
+        Widget,
+    },
 };
 use snafu::{ResultExt, Snafu};
 use tokio::sync::mpsc;
@@ -20,7 +22,8 @@ use crate::{
 };
 use crate::{
     action::{ActionError, GetActionFailedSnafu},
-    mode::KeyMode,
+    app::CurrentScreen,
+    mode::{AddTorrentMode, KeyMode},
     settings::styles::StyleMode,
     ui::assets,
 };
@@ -40,6 +43,7 @@ pub struct AddTorrent {
     selection_start: Option<usize>,
     cursor_position: usize,
     insert_mode: bool,
+    mode: AddTorrentMode,
 }
 
 impl Drawable for AddTorrent {
@@ -51,9 +55,13 @@ impl Drawable for AddTorrent {
     ) {
         let centered_area = self.centered_rect(50, 10, area);
         Clear.render(centered_area, buf);
+        let style = settings
+            .styles
+            .get_style(&StyleMode::AddTorrent(self.mode), "border");
         let block = Block::default()
             .borders(Borders::ALL)
-            .border_type(BorderType::Rounded);
+            .border_type(BorderType::Rounded)
+            .style(style);
 
         let inner_area = block.inner(centered_area);
         block.render(centered_area, buf);
@@ -73,27 +81,42 @@ impl Drawable for AddTorrent {
             .saturating_sub((input_area.width - 1) as usize);
         let mut display_text = self.value.chars().skip(offset).collect::<String>();
 
-        display_text.insert(
-            self.cursor_position.saturating_sub(offset),
-            assets::Symbols::CURSOR,
-        );
+        if matches!(self.mode, AddTorrentMode::Input) {
+            let input_style = if self.insert_mode {
+                settings
+                    .styles
+                    .get_style(&StyleMode::AddTorrent(AddTorrentMode::Input), "insert_mode")
+            } else {
+                settings
+                    .styles
+                    .get_style(&StyleMode::AddTorrent(AddTorrentMode::Input), "default")
+            };
+            display_text.insert(
+                self.cursor_position.saturating_sub(offset),
+                assets::Symbols::CURSOR,
+            );
 
-        let input_style = if self.insert_mode {
-            settings
-                .styles
-                .get_style(&StyleMode::AddTorrent, "insert_mode")
+            Paragraph::new(display_text)
+                .style(input_style)
+                .render(input_area, buf);
+            self.highlight_selected(offset, input_area, buf, settings);
+            Line::from(Symbols::ROW_DIVIDER.repeat(chunks[1].width as usize))
+                .style(input_style)
+                .render(chunks[1], buf);
         } else {
-            settings.styles.get_style(&StyleMode::AddTorrent, "default")
-        };
-        Paragraph::new(display_text.clone())
-            .style(input_style)
-            .render(input_area, buf);
-        self.highlight_selected(offset, input_area, buf, settings);
-        Line::from(Symbols::ROW_DIVIDER.repeat(chunks[1].width as usize))
-            .style(input_style)
-            .render(chunks[1], buf);
+            let input_style = settings
+                .styles
+                .get_style(&StyleMode::AddTorrent(AddTorrentMode::Connectors), "input");
+            Paragraph::new(display_text)
+                .style(input_style)
+                .render(input_area, buf);
+            Line::from(Symbols::ROW_DIVIDER.repeat(chunks[1].width as usize))
+                .style(input_style)
+                .render(chunks[1], buf);
+        }
+
         let table = self.build_table(settings);
-        table.render(chunks[2], buf);
+        StatefulWidget::render(table, chunks[2], buf, &mut self.table_state)
     }
 }
 
@@ -116,7 +139,7 @@ impl AddTorrent {
             let end = self.cursor_position.saturating_sub(skip) as u16;
             let highlight_style = settings
                 .styles
-                .get_style(&StyleMode::AddTorrent, "highlight");
+                .get_style(&StyleMode::AddTorrent(AddTorrentMode::Input), "highlight");
 
             for i in start.min(end + 1)..end.max(start + 1) {
                 if let Some(cell) = buf.cell_mut((area.x + i, area.y)) {
@@ -136,7 +159,7 @@ impl AddTorrent {
         use Action::*;
         let maybe_action = settings
             .keybindings
-            .action(KeyMode::AddTorrent, key_event)
+            .action(KeyMode::AddTorrent(self.mode), key_event)
             .context(GetActionFailedSnafu)?;
         if self.insert_mode {
             match maybe_action {
@@ -240,6 +263,21 @@ impl AddTorrent {
                     }
                     Ok(ActionResult::Handled)
                 }
+                Switch => {
+                    self.mode.toggle();
+                    Ok(ActionResult::Handled)
+                }
+                Up => {
+                    self.table_state.select_previous();
+                    Ok(ActionResult::Handled)
+                }
+                Down => {
+                    self.table_state.select_next();
+                    Ok(ActionResult::Handled)
+                }
+                Help(_) => Ok(ActionResult::Unhandled(Help(CurrentScreen::AddTorrent(
+                    self.mode,
+                )))),
                 _ => Ok(ActionResult::Unhandled(action)),
             }
         } else {
@@ -258,6 +296,10 @@ impl AddTorrent {
         }
     }
 
+    fn selected_connector(&mut self, settings: &mut Settings, idx: usize) {
+        settings.connectors.get(key)
+    }
+
     fn build_table(&self, settings: &Settings) -> Table<'static> {
         let rows: Vec<Row<'_>> = settings
             .connectors
@@ -268,27 +310,28 @@ impl AddTorrent {
                 if *con.connector.selected() {
                     style = settings
                         .styles
-                        .get_style(&StyleMode::AddTorrent, "selected_connector");
+                        .get_style(&StyleMode::AddTorrent(self.mode), "selected_connector");
                     icon = "󰄵";
                 } else {
                     style = settings
                         .styles
-                        .get_style(&StyleMode::AddTorrent, "unselected_connector");
+                        .get_style(&StyleMode::AddTorrent(self.mode), "unselected_connector");
                     icon = "󰄱";
                 }
                 Row::new(vec![Line::from(icon), Line::from(c.to_string())]).style(style)
             })
             .collect();
         let widths = [Constraint::Length(2), Constraint::Fill(1)];
-        let default_style = settings
+        let table_style = settings
             .styles
-            .get_style(&StyleMode::AddTorrent, "connectors");
+            .get_style(&StyleMode::AddTorrent(self.mode), "default");
+
         let highlight_style = settings
             .styles
-            .get_style(&StyleMode::AddTorrent, "highlight_style");
+            .get_style(&StyleMode::AddTorrent(self.mode), "highlight");
         Table::new(rows, widths)
             .column_spacing(1)
-            .style(default_style)
+            .style(table_style)
             .row_highlight_style(highlight_style)
     }
 
