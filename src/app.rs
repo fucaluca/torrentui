@@ -10,17 +10,18 @@ use crate::{
     action::Action,
     connector_worker::ConnectorWorker,
     connectors::{ConnectorCommands, ConnectorEvents},
-    mode::KeyMode,
+    mode::{AddTorrentMode, KeyMode},
     settings::{ConfigSource, Settings, get_config_dir},
     terminal::{self, Event, Tui},
     ui::{self, ActionResult, Drawable},
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
+#[cfg_attr(test, derive(Eq, PartialEq))]
 pub enum CurrentScreen {
     #[default]
     TorrentList,
-    AddTorrent,
+    AddTorrent(AddTorrentMode),
 }
 
 pub struct App {
@@ -87,7 +88,7 @@ impl App {
             let buffer = frame.buffer_mut();
             let [content_area, notification_area] = main_area.areas(area);
             match self.current_screen {
-                CurrentScreen::AddTorrent => {
+                CurrentScreen::AddTorrent(_) => {
                     self.components
                         .add_torrent
                         .draw(buffer, content_area, &self.settings);
@@ -147,7 +148,7 @@ impl App {
                     .handle_key_events(key_event, &mut self.settings, &mut self.connectors)
                     .await?
             }
-            CurrentScreen::AddTorrent => {
+            CurrentScreen::AddTorrent(_) => {
                 self.components
                     .add_torrent
                     .handle_key_events(key_event, &mut self.settings, &mut self.connectors)
@@ -157,11 +158,16 @@ impl App {
         match result {
             ActionResult::Unhandled(action) => match action {
                 Action::Quit => self.should_quit = true,
-                Action::AddTorrent => self.switch_screen(CurrentScreen::AddTorrent),
-                Action::Help => self.show_help_on_current_screen()?,
+                Action::AddTorrent => {
+                    self.switch_screen(CurrentScreen::AddTorrent(AddTorrentMode::Input))
+                }
+                // Action::AddTorrent => {
+                //     self.switch_screen(CurrentScreen::AddTorrent(AddTorrentMode::default()))
+                // }
+                Action::Help(mode) => self.show_help_on_current_screen(Some(&mode))?,
                 Action::Next => {
                     if self.settings.show_help_auto {
-                        self.show_help_on_current_screen()?;
+                        self.show_help_on_current_screen(None)?;
                     }
                 }
                 Action::Escape => {
@@ -185,8 +191,11 @@ impl App {
         self.current_screen = screen;
     }
 
-    fn show_help_on_current_screen(&mut self) -> Result<()> {
-        let key_mode = KeyMode::from(&self.current_screen);
+    fn show_help_on_current_screen(
+        &mut self,
+        current_screen: Option<&CurrentScreen>,
+    ) -> Result<()> {
+        let key_mode = KeyMode::from(current_screen.unwrap_or(&self.current_screen));
         self.show_help(&key_mode)?;
         Ok(())
     }

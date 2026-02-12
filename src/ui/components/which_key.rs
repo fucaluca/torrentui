@@ -138,7 +138,7 @@ impl WhichKey {
         self.keys.clear();
         for (_, next_node) in &node.next {
             let description = Description::new(
-                next_node.action,
+                next_node.action.clone(),
                 next_node.display.clone(),
                 next_node.description.clone(),
             );

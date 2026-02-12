@@ -139,7 +139,7 @@ impl AddTorrent {
             let end = self.cursor_position.saturating_sub(skip) as u16;
             let highlight_style = settings
                 .styles
-                .get_style(&StyleMode::AddTorrent(AddTorrentMode::Input), "highlight");
+                .get_style(&StyleMode::AddTorrent(self.mode), "input_highlight");
 
             for i in start.min(end + 1)..end.max(start + 1) {
                 if let Some(cell) = buf.cell_mut((area.x + i, area.y)) {
@@ -296,9 +296,9 @@ impl AddTorrent {
         }
     }
 
-    fn selected_connector(&mut self, settings: &mut Settings, idx: usize) {
+    /* fn selected_connector(&mut self, settings: &mut Settings, idx: usize) {
         settings.connectors.get(key)
-    }
+    } */
 
     fn build_table(&self, settings: &Settings) -> Table<'static> {
         let rows: Vec<Row<'_>> = settings
@@ -328,7 +328,7 @@ impl AddTorrent {
 
         let highlight_style = settings
             .styles
-            .get_style(&StyleMode::AddTorrent(self.mode), "highlight");
+            .get_style(&StyleMode::AddTorrent(self.mode), "connectors_highlight");
         Table::new(rows, widths)
             .column_spacing(1)
             .style(table_style)

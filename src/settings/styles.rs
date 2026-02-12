@@ -3,7 +3,7 @@ use std::{collections::HashMap, ops::Deref};
 use ratatui::style::{Color, Modifier, Style};
 use serde::Deserialize;
 
-use crate::torrent::State;
+use crate::{mode::AddTorrentMode, torrent::State, ui::which_key::WhichKey};
 
 #[derive(Debug, Default, Deserialize, Hash, Eq, PartialEq)]
 pub enum StyleMode {
@@ -14,9 +14,29 @@ pub enum StyleMode {
     Table,
     Notification,
     WhichKey,
-    AddTorrent,
+    AddTorrent(AddTorrentMode),
     #[default]
     Default,
+}
+
+use std::str::FromStr;
+
+impl FromStr for StyleMode {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Active" => Ok(StyleMode::Active),
+            "Paused" => Ok(StyleMode::Paused),
+            "Initializing" => Ok(StyleMode::Initializing),
+            "Error" => Ok(StyleMode::Error),
+            "Table" => Ok(StyleMode::Table),
+            "Notification" => Ok(StyleMode::Notification),
+            "WhichKey" => Ok(StyleMode::WhichKey),
+            "Default" => Ok(StyleMode::default()),
+            _ => Err(format!("Unknown key mode: {}", s)),
+        }
+    }
 }
 
 impl From<&State> for StyleMode {
@@ -59,7 +79,43 @@ impl<'de> Deserialize<'de> for Styles {
     where
         D: serde::Deserializer<'de>,
     {
-        let parsed_map = HashMap::<StyleMode, HashMap<String, String>>::deserialize(deserializer)?;
+        #[derive(Debug, Deserialize, Default)]
+        #[serde(default)]
+        struct Helper {
+            #[serde(flatten)]
+            flat: HashMap<String, HashMap<String, String>>,
+
+            #[serde(rename = "AddTorrent")]
+            add_torrent: Option<AddTorrentGroup>,
+        }
+
+        #[derive(Debug, Deserialize, Default)]
+        #[serde(default, rename_all = "PascalCase")]
+        struct AddTorrentGroup {
+            input: Option<HashMap<String, String>>,
+            connectors: Option<HashMap<String, String>>,
+        }
+
+        let helper = Helper::deserialize(deserializer)?;
+
+        let mut parsed_map = HashMap::<StyleMode, HashMap<String, String>>::new();
+
+        for (key_str, bindings) in helper.flat {
+            let mode = key_str.parse::<StyleMode>().map_err(|e| {
+                serde::de::Error::custom(format!("Unknown mode '{}': {}", key_str, e))
+            })?;
+            parsed_map.insert(mode, bindings);
+        }
+
+        if let Some(add) = helper.add_torrent {
+            if let Some(bindings) = add.input {
+                parsed_map.insert(StyleMode::AddTorrent(AddTorrentMode::Input), bindings);
+            }
+            if let Some(bindings) = add.connectors {
+                parsed_map.insert(StyleMode::AddTorrent(AddTorrentMode::Connectors), bindings);
+            }
+        }
+
         let styles = parsed_map
             .into_iter()
             .map(|(mode, inner_map)| {

@@ -4,9 +4,11 @@ use serde::Deserialize;
 use snafu::Snafu;
 use tokio::sync::mpsc::error::SendError;
 
-use crate::{connectors::ConnectorCommands, settings::keybindings::KeyBindingsError};
+use crate::{
+    app::CurrentScreen, connectors::ConnectorCommands, settings::keybindings::KeyBindingsError,
+};
 
-#[derive(Debug, Default, Deserialize, Clone, Copy)]
+#[derive(Debug, Default, Clone)]
 #[cfg_attr(test, derive(Eq, PartialEq))]
 pub enum Action {
     Quit,
@@ -24,13 +26,74 @@ pub enum Action {
     PauseToggle,
     Forget,
     Delete,
-    Help,
+    Help(CurrentScreen),
     Escape,
     Input,
     Backspace,
+    Switch,
     NoOp,
     #[default]
     Next,
+}
+
+impl<'de> Deserialize<'de> for Action {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let parsed_action = String::deserialize(deserializer)?;
+        use Action::*;
+        match parsed_action.as_str() {
+            "Quit" => Ok(Quit),
+            "AddTorrent" => Ok(AddTorrent),
+            "Help" => Ok(Help(CurrentScreen::default())),
+            "Up" => Ok(Up),
+            "Down" => Ok(Down),
+            "Left" => Ok(Left),
+            "Right" => Ok(Right),
+            "GotoTop" => Ok(GotoTop),
+            "GotoBottom" => Ok(GotoBottom),
+            "Select" => Ok(Select),
+            "SelectAll" => Ok(SelectAll),
+            "Pause" => Ok(Pause),
+            "Start" => Ok(Start),
+            "PauseToggle" => Ok(PauseToggle),
+            "Forget" => Ok(Forget),
+            "Delete" => Ok(Delete),
+            "Escape" => Ok(Escape),
+            "Input" => Ok(Input),
+            "Backspace" => Ok(Backspace),
+            "Switch" => Ok(Switch),
+            "NoOp" => Ok(NoOp),
+            "Next" => Ok(Next),
+            variant => Err(serde::de::Error::unknown_variant(
+                variant,
+                &[
+                    "Quit",
+                    "AddTorrent",
+                    "Help",
+                    "Up",
+                    "Down",
+                    "Left",
+                    "Right",
+                    "GotoTop",
+                    "GotoBottom",
+                    "Select",
+                    "SelectAll",
+                    "Pause",
+                    "Start",
+                    "PauseToggle",
+                    "Forget",
+                    "Delete",
+                    "Escape",
+                    "Input",
+                    "Backspace",
+                    "Switch",
+                    "NoOp",
+                ],
+            )),
+        }
+    }
 }
 
 impl Display for Action {
@@ -51,9 +114,10 @@ impl Display for Action {
             Self::PauseToggle => write!(f, "PauseToggle"),
             Self::Forget => write!(f, "Forget"),
             Self::Delete => write!(f, "Delete"),
-            Self::Help => write!(f, "Help"),
+            Self::Help(_) => write!(f, "Help"),
             Self::Escape => write!(f, "Escape"),
             Self::Next => write!(f, "Next"),
+            Self::Switch => write!(f, "Switch"),
             Self::NoOp => write!(f, "NoOp"),
             Self::Input => write!(f, "Input"),
             Self::Backspace => write!(f, "Backspace"),

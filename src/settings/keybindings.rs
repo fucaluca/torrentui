@@ -4,7 +4,10 @@ use indexmap::IndexMap;
 use serde::Deserialize;
 use snafu::Snafu;
 
-use crate::{action::Action, mode::KeyMode};
+use crate::{
+    action::Action,
+    mode::{AddTorrentMode, KeyMode},
+};
 
 #[derive(Debug, Default)]
 pub struct KeyBindingsNode {
@@ -72,7 +75,7 @@ impl KeyBindings {
         }
         if current_node.next.is_empty() {
             self.current_sequence.clear();
-            Ok(Some(current_node.action))
+            Ok(Some(current_node.action.clone()))
         } else {
             Ok(Some(Action::Next))
         }
@@ -84,8 +87,43 @@ impl<'de> Deserialize<'de> for KeyBindings {
     where
         D: serde::Deserializer<'de>,
     {
-        let parsed_map =
-            IndexMap::<KeyMode, IndexMap<String, KeyBindingValue>>::deserialize(deserializer)?;
+        #[derive(Debug, Deserialize, Default)]
+        #[serde(default)]
+        struct Helper {
+            #[serde(flatten)]
+            flat: IndexMap<String, IndexMap<String, KeyBindingValue>>,
+
+            #[serde(rename = "AddTorrent")]
+            add_torrent: Option<AddTorrentGroup>,
+        }
+
+        #[derive(Debug, Deserialize, Default)]
+        #[serde(default, rename_all = "PascalCase")]
+        struct AddTorrentGroup {
+            input: Option<IndexMap<String, KeyBindingValue>>,
+            connectors: Option<IndexMap<String, KeyBindingValue>>,
+        }
+
+        let helper = Helper::deserialize(deserializer)?;
+
+        let mut parsed_map = IndexMap::<KeyMode, IndexMap<String, KeyBindingValue>>::new();
+
+        for (key_str, bindings) in helper.flat {
+            let mode = key_str.parse::<KeyMode>().map_err(|e| {
+                serde::de::Error::custom(format!("Unknown mode '{}': {}", key_str, e))
+            })?;
+            parsed_map.insert(mode, bindings);
+        }
+
+        if let Some(add) = helper.add_torrent {
+            if let Some(bindings) = add.input {
+                parsed_map.insert(KeyMode::AddTorrent(AddTorrentMode::Input), bindings);
+            }
+            if let Some(bindings) = add.connectors {
+                parsed_map.insert(KeyMode::AddTorrent(AddTorrentMode::Connectors), bindings);
+            }
+        }
+
         let bindings = parsed_map
             .into_iter()
             .map(|(mode, inner_map)| {
@@ -93,7 +131,6 @@ impl<'de> Deserialize<'de> for KeyBindings {
 
                 for (raw, value) in inner_map {
                     let key_events = parse_key_sequence(&raw).map_err(serde::de::Error::custom)?;
-
                     add_binding_to_tree(&mut root_bindings, key_events, value);
                 }
 
@@ -110,6 +147,7 @@ impl<'de> Deserialize<'de> for KeyBindings {
                     KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::SHIFT),
                     quit_node,
                 );
+
                 Ok((mode, root_bindings))
             })
             .collect::<Result<IndexMap<_, _>, D::Error>>()?;
