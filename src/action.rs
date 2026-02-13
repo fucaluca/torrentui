@@ -31,6 +31,7 @@ pub enum Action {
     Input,
     Backspace,
     Switch,
+    Toggle,
     NoOp,
     #[default]
     Next,
@@ -64,6 +65,7 @@ impl<'de> Deserialize<'de> for Action {
             "Input" => Ok(Input),
             "Backspace" => Ok(Backspace),
             "Switch" => Ok(Switch),
+            "Toggle" => Ok(Toggle),
             "NoOp" => Ok(NoOp),
             "Next" => Ok(Next),
             variant => Err(serde::de::Error::unknown_variant(
@@ -89,6 +91,7 @@ impl<'de> Deserialize<'de> for Action {
                     "Input",
                     "Backspace",
                     "Switch",
+                    "Toggle",
                     "NoOp",
                 ],
             )),
@@ -121,6 +124,7 @@ impl Display for Action {
             Self::NoOp => write!(f, "NoOp"),
             Self::Input => write!(f, "Input"),
             Self::Backspace => write!(f, "Backspace"),
+            Self::Toggle => write!(f, "Toggle"),
         }
     }
 }

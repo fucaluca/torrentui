@@ -22,12 +22,12 @@ pub struct Components {
 }
 
 impl Components {
-    pub fn new() -> Self {
+    pub fn new(settings: &Settings) -> Self {
         Self {
             torrent_list: TorrentList::new(),
             notifications: Notifications::new(),
             which_key: WhichKey::new(),
-            add_torrent: AddTorrent::new(),
+            add_torrent: AddTorrent::new(settings),
         }
     }
 }

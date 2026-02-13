@@ -1,4 +1,9 @@
-use std::{fmt::Display, ops::Deref, sync::Arc, time::Duration};
+use std::{
+    fmt::Display,
+    ops::{Deref, DerefMut},
+    sync::Arc,
+    time::Duration,
+};
 
 use indexmap::IndexMap;
 use reqwest::Client;
@@ -30,6 +35,12 @@ impl Deref for Connectors {
     type Target = IndexMap<ConnectorName, Arc<ConfiguredConnector>>;
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl DerefMut for Connectors {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 

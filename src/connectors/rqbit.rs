@@ -63,6 +63,9 @@ impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
     fn selected_mut(&mut self) -> &mut bool {
         &mut self.selected
     }
+    fn toggle_selected(&mut self) {
+        self.selected = !self.selected;
+    }
 
     async fn get_torrent_list(&self) -> Result<Vec<TorrentInfo>, ConnectorError> {
         self.api

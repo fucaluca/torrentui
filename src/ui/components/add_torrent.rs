@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
@@ -13,7 +13,6 @@ use ratatui::{
 use snafu::{ResultExt, Snafu};
 use tokio::sync::mpsc;
 
-#[expect(unused)]
 use crate::{
     action::Action,
     connectors::{ConnectorCommands, ConnectorName},
@@ -35,14 +34,25 @@ pub enum AddTorrentError {
     ClipboardError { source: arboard::Error },
 }
 
+struct Connector {
+    name: ConnectorName,
+    selected: bool,
+}
+
+impl Connector {
+    fn toggle_selected(&mut self) {
+        self.selected = !self.selected
+    }
+}
+
 #[derive(Default)]
 pub struct AddTorrent {
-    #[expect(unused)]
     table_state: TableState,
     value: String,
     selection_start: Option<usize>,
     cursor_position: usize,
     insert_mode: bool,
+    connectors: Vec<Connector>,
     mode: AddTorrentMode,
 }
 
@@ -121,8 +131,17 @@ impl Drawable for AddTorrent {
 }
 
 impl AddTorrent {
-    pub fn new() -> Self {
+    pub fn new(settings: &Settings) -> Self {
+        let connectors = settings
+            .connectors
+            .iter()
+            .map(|(name, connector)| Connector {
+                name: Arc::clone(name),
+                selected: *connector.connector.selected(),
+            })
+            .collect::<Vec<Connector>>();
         Self {
+            connectors,
             ..Default::default()
         }
     }
@@ -275,13 +294,26 @@ impl AddTorrent {
                     self.table_state.select_next();
                     Ok(ActionResult::Handled)
                 }
+                Toggle => {
+                    self.toggle_connector();
+                    Ok(ActionResult::Handled)
+                }
                 Help(_) => Ok(ActionResult::Unhandled(Help(CurrentScreen::AddTorrent(
                     self.mode,
                 )))),
+
                 _ => Ok(ActionResult::Unhandled(action)),
             }
         } else {
             Ok(ActionResult::Unhandled(Action::NoOp))
+        }
+    }
+
+    fn toggle_connector(&mut self) {
+        if let Some(selected_connector_idx) = self.table_state.selected() {
+            if let Some(connector) = self.connectors.get_mut(selected_connector_idx) {
+                connector.toggle_selected();
+            }
         }
     }
 
@@ -300,14 +332,14 @@ impl AddTorrent {
         settings.connectors.get(key)
     } */
 
-    fn build_table(&self, settings: &Settings) -> Table<'static> {
-        let rows: Vec<Row<'_>> = settings
+    fn build_table(&mut self, settings: &Settings) -> Table<'static> {
+        let rows: Vec<Row<'_>> = self
             .connectors
             .iter()
-            .map(|(c, con)| {
+            .map(|con| {
                 let style;
                 let icon;
-                if *con.connector.selected() {
+                if con.selected {
                     style = settings
                         .styles
                         .get_style(&StyleMode::AddTorrent(self.mode), "selected_connector");
@@ -318,7 +350,7 @@ impl AddTorrent {
                         .get_style(&StyleMode::AddTorrent(self.mode), "unselected_connector");
                     icon = "󰄱";
                 }
-                Row::new(vec![Line::from(icon), Line::from(c.to_string())]).style(style)
+                Row::new(vec![Line::from(icon), Line::from(con.name.to_string())]).style(style)
             })
             .collect();
         let widths = [Constraint::Length(2), Constraint::Fill(1)];

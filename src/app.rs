@@ -42,7 +42,7 @@ impl App {
         let tui = Tui::new()?;
         Ok(Self {
             should_quit: false,
-            components: ui::Components::new(),
+            components: ui::Components::new(&settings),
             settings,
             connectors: HashMap::new(),
             current_screen: mode,
@@ -118,7 +118,7 @@ impl App {
             let (command_tx, command_rx) = mpsc::channel(10);
             self.connectors
                 .insert(connector_name.to_string(), command_tx);
-            let worker = ConnectorWorker::new(Arc::clone(connector), cancellation_token.clone());
+            let worker = ConnectorWorker::new(Arc::clone(&connector), cancellation_token.clone());
             worker.run(command_rx, connector_events_tx.clone()).await;
         }
     }
