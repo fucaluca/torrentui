@@ -3,6 +3,7 @@ pub mod source;
 
 pub use info_hash::InfoHash;
 use serde::Deserialize;
+pub use source::Magnet;
 pub use source::Source;
 
 #[derive(Debug)]
@@ -41,9 +42,6 @@ pub enum State {
     Initializing,
     Error,
 }
-
-#[cfg(test)]
-pub use source::Magnet;
 
 #[cfg(test)]
 use fake::faker::filesystem::en::DirPath;

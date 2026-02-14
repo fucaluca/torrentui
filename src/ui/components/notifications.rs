@@ -7,6 +7,7 @@ use ratatui::{
 };
 
 use crate::{
+    action::ActionError,
     connectors::ConnectorEvents,
     settings::{Settings, styles::StyleMode},
     ui::Drawable,
@@ -15,6 +16,16 @@ use crate::{
 pub enum Notification {
     Info(String),
     Error(String),
+}
+impl Notification {
+    pub fn info(message: impl Into<String>) -> Self {
+        let message = message.into();
+        Notification::Info(message)
+    }
+    pub fn error(message: impl Into<String>) -> Self {
+        let message = message.into();
+        Notification::Error(message)
+    }
 }
 impl From<ConnectorEvents> for Option<Notification> {
     fn from(value: ConnectorEvents) -> Self {
@@ -30,6 +41,18 @@ impl From<ConnectorEvents> for Option<Notification> {
             }
             ConnectorEvents::Error(e) => Some(Notification::Error(e.to_string())),
             _ => None,
+        }
+    }
+}
+impl From<ActionError> for Option<Notification> {
+    fn from(value: ActionError) -> Self {
+        use ActionError::*;
+        match value {
+            CommandSendFailed { .. } => Some(Notification::Error("Command send failed".into())),
+            ConnectorNotFound => Some(Notification::Error("Connector not found".into())),
+            GetActionFailed { .. } => Some(Notification::Error("Get action failed".into())),
+            SendError { .. } => Some(Notification::Error("Send error".into())),
+            CreateMagnetError { .. } => Some(Notification::Error("Create magnet error".into())),
         }
     }
 }

@@ -130,11 +130,11 @@ impl WhichKey {
         self.keys.clear();
     }
 
-    pub fn visible(&self) -> bool {
+    pub fn is_hidden(&self) -> bool {
         self.keys.is_empty()
     }
 
-    pub fn update(&mut self, node: &KeyBindingsNode) {
+    pub fn show(&mut self, node: &KeyBindingsNode) {
         self.keys.clear();
         for (_, next_node) in &node.next {
             let description = Description::new(
@@ -252,7 +252,7 @@ mod tests {
             .next
             .insert(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE), node);
 
-        which_key.update(&keybindings);
+        which_key.show(&keybindings);
 
         let expected_lines: Vec<String> = ["╭ Commands ╮", "│   q Exit │", "╰── {vers} ╯"]
             .iter()
@@ -341,7 +341,7 @@ mod tests {
             .next
             .insert(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE), node1);
 
-        which_key.update(&keybindings);
+        which_key.show(&keybindings);
 
         let expected_lines: Vec<String> = ["╭ Commands ╮", "│    q +   │", "╰── {vers} ╯"]
             .iter()

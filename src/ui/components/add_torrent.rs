@@ -14,9 +14,10 @@ use snafu::{ResultExt, Snafu};
 use tokio::sync::mpsc;
 
 use crate::{
-    action::Action,
+    action::{Action, CreateMagnetSnafu, SendSnafu},
     connectors::{ConnectorCommands, ConnectorName},
     settings::Settings,
+    torrent::{Magnet, Source},
     ui::{ActionResult, Drawable, assets::Symbols},
 };
 use crate::{
@@ -162,7 +163,6 @@ impl AddTorrent {
 
             for i in start.min(end + 1)..end.max(start + 1) {
                 if let Some(cell) = buf.cell_mut((area.x + i, area.y)) {
-                    // TODO: get styles from config
                     cell.set_style(highlight_style);
                 }
             }
@@ -173,7 +173,7 @@ impl AddTorrent {
         &mut self,
         key_event: KeyEvent,
         settings: &mut Settings,
-        #[expect(unused)] connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
+        connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
     ) -> Result<ActionResult, ActionError> {
         use Action::*;
         let maybe_action = settings
@@ -298,6 +298,7 @@ impl AddTorrent {
                     self.toggle_connector();
                     Ok(ActionResult::Handled)
                 }
+                Send => self.send_new_torrent(connectors).await,
                 Help(_) => Ok(ActionResult::Unhandled(Help(CurrentScreen::AddTorrent(
                     self.mode,
                 )))),
@@ -309,11 +310,36 @@ impl AddTorrent {
         }
     }
 
-    fn toggle_connector(&mut self) {
-        if let Some(selected_connector_idx) = self.table_state.selected() {
-            if let Some(connector) = self.connectors.get_mut(selected_connector_idx) {
-                connector.toggle_selected();
+    async fn send_new_torrent(
+        &self,
+        connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
+    ) -> Result<ActionResult, ActionError> {
+        let magnet = Magnet::new(self.value.clone()).context(CreateMagnetSnafu)?;
+        let source = Source::Magnet(magnet);
+        let command = ConnectorCommands::Add(source);
+        self.send(connectors, command).await
+    }
+
+    async fn send(
+        &self,
+        connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
+        command: ConnectorCommands,
+    ) -> Result<ActionResult, ActionError> {
+        for con in &self.connectors {
+            if con.selected
+                && let Some(connector) = connectors.get_mut(&con.name.to_string())
+            {
+                connector.send(command.clone()).await.context(SendSnafu)?
             }
+        }
+        Ok(ActionResult::Unhandled(Action::Escape))
+    }
+
+    fn toggle_connector(&mut self) {
+        if let Some(selected_connector_idx) = self.table_state.selected()
+            && let Some(connector) = self.connectors.get_mut(selected_connector_idx)
+        {
+            connector.toggle_selected();
         }
     }
 

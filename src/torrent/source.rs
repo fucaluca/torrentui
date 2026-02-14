@@ -3,8 +3,8 @@ use std::{fmt, ops::Deref, path::PathBuf};
 use snafu::{ResultExt, Snafu, ensure};
 use url::Url;
 
-#[derive(Debug)]
-#[cfg_attr(test, derive(Eq, PartialEq, Clone))]
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(Eq, PartialEq))]
 pub enum Source {
     #[cfg_attr(not(test), expect(unused))]
     Magnet(Magnet),
@@ -12,8 +12,8 @@ pub enum Source {
     FilePath(PathBuf),
 }
 
-#[derive(Debug)]
-#[cfg_attr(test, derive(Eq, PartialEq, Clone))]
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(Eq, PartialEq))]
 pub struct Magnet(pub String);
 
 impl fmt::Display for Magnet {

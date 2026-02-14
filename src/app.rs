@@ -13,7 +13,7 @@ use crate::{
     mode::{AddTorrentMode, KeyMode},
     settings::{ConfigSource, Settings, get_config_dir},
     terminal::{self, Event, Tui},
-    ui::{self, ActionResult, Drawable},
+    ui::{self, ActionResult, Drawable, notifications::Notification},
 };
 
 #[derive(Debug, Default, Clone)]
@@ -90,7 +90,16 @@ impl App {
             match self.current_screen {
                 CurrentScreen::AddTorrent(_) => {
                     self.components
+                        .torrent_list
+                        .draw(buffer, content_area, &self.settings);
+                    self.components
                         .add_torrent
+                        .draw(buffer, content_area, &self.settings);
+                    self.components
+                        .notifications
+                        .draw(buffer, notification_area, &self.settings);
+                    self.components
+                        .which_key
                         .draw(buffer, content_area, &self.settings);
                 }
                 _ => {
@@ -100,11 +109,11 @@ impl App {
                     self.components
                         .notifications
                         .draw(buffer, notification_area, &self.settings);
+                    self.components
+                        .which_key
+                        .draw(buffer, content_area, &self.settings);
                 }
             };
-            self.components
-                .which_key
-                .draw(buffer, content_area, &self.settings);
         })?;
         Ok(())
     }
@@ -118,7 +127,7 @@ impl App {
             let (command_tx, command_rx) = mpsc::channel(10);
             self.connectors
                 .insert(connector_name.to_string(), command_tx);
-            let worker = ConnectorWorker::new(Arc::clone(&connector), cancellation_token.clone());
+            let worker = ConnectorWorker::new(Arc::clone(connector), cancellation_token.clone());
             worker.run(command_rx, connector_events_tx.clone()).await;
         }
     }
@@ -136,7 +145,7 @@ impl App {
         Ok(())
     }
 
-    fn notify(&mut self, n: ConnectorEvents) {
+    fn notify(&mut self, n: impl Into<Option<Notification>>) {
         self.components.notifications.notify(n);
     }
 
@@ -146,17 +155,17 @@ impl App {
                 self.components
                     .torrent_list
                     .handle_key_events(key_event, &mut self.settings, &mut self.connectors)
-                    .await?
+                    .await
             }
             CurrentScreen::AddTorrent(_) => {
                 self.components
                     .add_torrent
                     .handle_key_events(key_event, &mut self.settings, &mut self.connectors)
-                    .await?
+                    .await
             }
         };
         match result {
-            ActionResult::Unhandled(action) => match action {
+            Ok(ActionResult::Unhandled(action)) => match action {
                 Action::Quit => self.should_quit = true,
                 Action::AddTorrent => {
                     self.switch_screen(CurrentScreen::AddTorrent(AddTorrentMode::Input))
@@ -171,7 +180,7 @@ impl App {
                     }
                 }
                 Action::Escape => {
-                    if self.components.which_key.visible() {
+                    if self.components.which_key.is_hidden() {
                         self.current_screen = CurrentScreen::default();
                     } else {
                         self.components.which_key.hide();
@@ -179,9 +188,10 @@ impl App {
                 }
                 _ => self.components.which_key.hide(),
             },
-            ActionResult::Handled => {
+            Ok(ActionResult::Handled) => {
                 self.components.which_key.hide();
             }
+            Err(e) => self.notify(e),
         }
         Ok(())
     }
@@ -202,7 +212,7 @@ impl App {
 
     fn show_help(&mut self, key_mode: &KeyMode) -> Result<()> {
         if let Some(node) = self.settings.keybindings.get_current_node(key_mode) {
-            self.components.which_key.update(node);
+            self.components.which_key.show(node);
         }
         Ok(())
     }

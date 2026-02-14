@@ -6,6 +6,7 @@ use tokio::sync::mpsc::error::SendError;
 
 use crate::{
     app::CurrentScreen, connectors::ConnectorCommands, settings::keybindings::KeyBindingsError,
+    torrent::source::MagnetError,
 };
 
 #[derive(Debug, Default, Clone)]
@@ -32,6 +33,7 @@ pub enum Action {
     Backspace,
     Switch,
     Toggle,
+    Send,
     NoOp,
     #[default]
     Next,
@@ -66,6 +68,7 @@ impl<'de> Deserialize<'de> for Action {
             "Backspace" => Ok(Backspace),
             "Switch" => Ok(Switch),
             "Toggle" => Ok(Toggle),
+            "Send" => Ok(Send),
             "NoOp" => Ok(NoOp),
             "Next" => Ok(Next),
             variant => Err(serde::de::Error::unknown_variant(
@@ -92,6 +95,7 @@ impl<'de> Deserialize<'de> for Action {
                     "Backspace",
                     "Switch",
                     "Toggle",
+                    "Send",
                     "NoOp",
                 ],
             )),
@@ -125,6 +129,7 @@ impl Display for Action {
             Self::Input => write!(f, "Input"),
             Self::Backspace => write!(f, "Backspace"),
             Self::Toggle => write!(f, "Toggle"),
+            Self::Send => write!(f, "Send"),
         }
     }
 }
@@ -140,4 +145,10 @@ pub enum ActionError {
     ConnectorNotFound,
     #[snafu(display(r#"Failed to get Action"#))]
     GetActionFailed { source: KeyBindingsError },
+    #[snafu(display(r#"Failed to send command"#))]
+    SendError {
+        source: SendError<ConnectorCommands>,
+    },
+    #[snafu(display("Failed to create magnet link"))]
+    CreateMagnetError { source: MagnetError },
 }
