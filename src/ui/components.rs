@@ -35,8 +35,3 @@ impl Components {
 pub trait Drawable {
     fn draw(&mut self, buf: &mut Buffer, area: Rect, settings: &Settings);
 }
-
-pub enum ActionResult {
-    Handled,
-    Unhandled(Action),
-}

@@ -18,7 +18,7 @@ use crate::{
     connectors::{ConnectorCommands, ConnectorName},
     settings::Settings,
     torrent::{Magnet, Source},
-    ui::{ActionResult, Drawable, assets::Symbols},
+    ui::{Drawable, assets::Symbols},
 };
 use crate::{
     action::{ActionError, GetActionFailedSnafu},
@@ -174,7 +174,7 @@ impl AddTorrent {
         key_event: KeyEvent,
         settings: &mut Settings,
         connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
-    ) -> Result<ActionResult, ActionError> {
+    ) -> Result<Vec<Action>, ActionError> {
         use Action::*;
         let maybe_action = settings
             .keybindings
@@ -187,7 +187,7 @@ impl AddTorrent {
                     if self.selection_start.is_some() {
                         self.selection_start = None;
                     }
-                    Ok(ActionResult::Handled)
+                    Ok(Vec::new())
                 }
                 Some(Backspace) => {
                     if let Some(start) = self.selection_start {
@@ -207,7 +207,7 @@ impl AddTorrent {
                         self.value.remove(self.cursor_position.saturating_sub(1));
                         self.cursor_position = self.cursor_position.saturating_sub(1);
                     }
-                    Ok(ActionResult::Handled)
+                    Ok(Vec::new())
                 }
                 Some(SelectAll) => {
                     if self.selection_start.is_some() {
@@ -216,11 +216,11 @@ impl AddTorrent {
                     } else {
                         self.selection_start = Some(0)
                     }
-                    Ok(ActionResult::Handled)
+                    Ok(Vec::new())
                 }
                 Some(_) | None => {
                     self.insert(key_event.code);
-                    Ok(ActionResult::Handled)
+                    Ok(Vec::new())
                 }
             }
         } else if let Some(action) = maybe_action {
@@ -228,22 +228,22 @@ impl AddTorrent {
                 Escape => {
                     if self.selection_start.is_some() {
                         self.selection_start = None;
-                        Ok(ActionResult::Handled)
+                        Ok(Vec::new())
                     } else {
-                        Ok(ActionResult::Unhandled(action))
+                        Ok(vec![action])
                     }
                 }
                 Input => {
                     self.insert_mode = true;
-                    Ok(ActionResult::Handled)
+                    Ok(Vec::new())
                 }
                 Left => {
                     self.cursor_position = self.cursor_position.saturating_sub(1);
-                    Ok(ActionResult::Handled)
+                    Ok(Vec::new())
                 }
                 Right => {
                     self.cursor_position = self.value.chars().count().min(self.cursor_position + 1);
-                    Ok(ActionResult::Handled)
+                    Ok(Vec::new())
                 }
                 Select => {
                     if self.selection_start.is_some() {
@@ -251,7 +251,7 @@ impl AddTorrent {
                     } else {
                         self.selection_start = Some(self.cursor_position);
                     }
-                    Ok(ActionResult::Handled)
+                    Ok(Vec::new())
                 }
                 SelectAll => {
                     if self.selection_start.is_some() {
@@ -260,7 +260,7 @@ impl AddTorrent {
                     } else {
                         self.selection_start = Some(0)
                     }
-                    Ok(ActionResult::Handled)
+                    Ok(Vec::new())
                 }
                 Backspace => {
                     if let Some(start) = self.selection_start {
@@ -280,40 +280,38 @@ impl AddTorrent {
                         self.value.remove(self.cursor_position.saturating_sub(1));
                         self.cursor_position = self.cursor_position.saturating_sub(1);
                     }
-                    Ok(ActionResult::Handled)
+                    Ok(Vec::new())
                 }
                 Switch => {
                     self.mode.toggle();
-                    Ok(ActionResult::Handled)
+                    Ok(Vec::new())
                 }
                 Up => {
                     self.table_state.select_previous();
-                    Ok(ActionResult::Handled)
+                    Ok(Vec::new())
                 }
                 Down => {
                     self.table_state.select_next();
-                    Ok(ActionResult::Handled)
+                    Ok(Vec::new())
                 }
                 Toggle => {
                     self.toggle_connector();
-                    Ok(ActionResult::Handled)
+                    Ok(Vec::new())
                 }
                 Send => self.send_new_torrent(connectors).await,
-                Help(_) => Ok(ActionResult::Unhandled(Help(CurrentScreen::AddTorrent(
-                    self.mode,
-                )))),
+                Help(_) => Ok(vec![Help(CurrentScreen::AddTorrent(self.mode))]),
 
-                _ => Ok(ActionResult::Unhandled(action)),
+                _ => Ok(vec![action]),
             }
         } else {
-            Ok(ActionResult::Unhandled(Action::NoOp))
+            Ok(vec![Action::NoOp])
         }
     }
 
     async fn send_new_torrent(
         &self,
         connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
-    ) -> Result<ActionResult, ActionError> {
+    ) -> Result<Vec<Action>, ActionError> {
         let magnet = Magnet::new(self.value.clone()).context(CreateMagnetSnafu)?;
         let source = Source::Magnet(magnet);
         let command = ConnectorCommands::Add(source);
@@ -324,7 +322,7 @@ impl AddTorrent {
         &self,
         connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
         command: ConnectorCommands,
-    ) -> Result<ActionResult, ActionError> {
+    ) -> Result<Vec<Action>, ActionError> {
         for con in &self.connectors {
             if con.selected
                 && let Some(connector) = connectors.get_mut(&con.name.to_string())
@@ -332,7 +330,7 @@ impl AddTorrent {
                 connector.send(command.clone()).await.context(SendSnafu)?
             }
         }
-        Ok(ActionResult::Unhandled(Action::Escape))
+        Ok(vec![Action::Escape, Action::Escape])
     }
 
     fn toggle_connector(&mut self) {

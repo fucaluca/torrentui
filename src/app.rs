@@ -13,7 +13,7 @@ use crate::{
     mode::{AddTorrentMode, KeyMode},
     settings::{ConfigSource, Settings, get_config_dir},
     terminal::{self, Event, Tui},
-    ui::{self, ActionResult, Drawable, notifications::Notification},
+    ui::{self, Drawable, notifications::Notification},
 };
 
 #[derive(Debug, Default, Clone)]
@@ -165,31 +165,32 @@ impl App {
             }
         };
         match result {
-            Ok(ActionResult::Unhandled(action)) => match action {
-                Action::Quit => self.should_quit = true,
-                Action::AddTorrent => {
-                    self.switch_screen(CurrentScreen::AddTorrent(AddTorrentMode::Input))
-                }
-                // Action::AddTorrent => {
-                //     self.switch_screen(CurrentScreen::AddTorrent(AddTorrentMode::default()))
-                // }
-                Action::Help(mode) => self.show_help_on_current_screen(Some(&mode))?,
-                Action::Next => {
-                    if self.settings.show_help_auto {
-                        self.show_help_on_current_screen(None)?;
+            Ok(actions) => {
+                for action in actions.iter() {
+                    match action {
+                        Action::Quit => self.should_quit = true,
+                        Action::AddTorrent => {
+                            self.switch_screen(CurrentScreen::AddTorrent(AddTorrentMode::Input))
+                        }
+                        // Action::AddTorrent => {
+                        //     self.switch_screen(CurrentScreen::AddTorrent(AddTorrentMode::default()))
+                        // }
+                        Action::Help(mode) => self.show_help_on_current_screen(Some(mode))?,
+                        Action::Next => {
+                            if self.settings.show_help_auto {
+                                self.show_help_on_current_screen(None)?;
+                            }
+                        }
+                        Action::Escape => {
+                            if self.components.which_key.is_hidden() {
+                                self.current_screen = CurrentScreen::default();
+                            } else {
+                                self.components.which_key.hide();
+                            }
+                        }
+                        _ => self.components.which_key.hide(),
                     }
                 }
-                Action::Escape => {
-                    if self.components.which_key.is_hidden() {
-                        self.current_screen = CurrentScreen::default();
-                    } else {
-                        self.components.which_key.hide();
-                    }
-                }
-                _ => self.components.which_key.hide(),
-            },
-            Ok(ActionResult::Handled) => {
-                self.components.which_key.hide();
             }
             Err(e) => self.notify(e),
         }

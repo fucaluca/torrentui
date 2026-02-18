@@ -15,10 +15,10 @@ use crate::mode::KeyMode;
 use crate::settings::Settings;
 use crate::settings::styles::StyleMode;
 use crate::torrent::{State, TorrentInfo};
+use crate::ui::Drawable;
 use crate::ui::components::torrent_list::cell::Cell;
 use crate::ui::components::torrent_list::column::Column;
 use crate::ui::torrent_list::table_layout::TableLayout;
-use crate::ui::{ActionResult, Drawable};
 
 mod cell;
 mod column;
@@ -139,7 +139,7 @@ impl TorrentList {
         key_event: KeyEvent,
         settings: &mut Settings,
         connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
-    ) -> Result<ActionResult, ActionError> {
+    ) -> Result<Vec<Action>, ActionError> {
         if let Some(action) = settings
             .keybindings
             .action(KeyMode::TorrentList, key_event)
@@ -155,77 +155,77 @@ impl TorrentList {
                 Action::Pause => self.pause(connectors).await,
                 Action::Start => self.start(connectors).await,
                 Action::PauseToggle => self.pause_toggle(connectors).await,
-                _ => Ok(ActionResult::Unhandled(action)),
+                _ => Ok(vec![action]),
             }
         } else {
-            Ok(ActionResult::Unhandled(Action::NoOp))
+            Ok(vec![Action::NoOp])
         }
     }
 
-    fn select_previous(&mut self) -> Result<ActionResult, ActionError> {
+    fn select_previous(&mut self) -> Result<Vec<Action>, ActionError> {
         self.table_state.select_previous();
-        Ok(ActionResult::Handled)
+        Ok(Vec::new())
     }
 
-    fn select_next(&mut self) -> Result<ActionResult, ActionError> {
+    fn select_next(&mut self) -> Result<Vec<Action>, ActionError> {
         self.table_state.select_next();
-        Ok(ActionResult::Handled)
+        Ok(Vec::new())
     }
 
-    fn select_first(&mut self) -> Result<ActionResult, ActionError> {
+    fn select_first(&mut self) -> Result<Vec<Action>, ActionError> {
         self.table_state.select_first();
-        Ok(ActionResult::Handled)
+        Ok(Vec::new())
     }
 
-    fn select_last(&mut self) -> Result<ActionResult, ActionError> {
+    fn select_last(&mut self) -> Result<Vec<Action>, ActionError> {
         self.table_state.select_last();
-        Ok(ActionResult::Handled)
+        Ok(Vec::new())
     }
 
     async fn forget(
         &mut self,
         connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
-    ) -> Result<ActionResult, ActionError> {
+    ) -> Result<Vec<Action>, ActionError> {
         if let Some((command, connector)) = self.command(ActionKind::Forget, connectors) {
             self.send(connector, command).await?;
         };
-        Ok(ActionResult::Handled)
+        Ok(Vec::new())
     }
 
     async fn delete(
         &mut self,
         connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
-    ) -> Result<ActionResult, ActionError> {
+    ) -> Result<Vec<Action>, ActionError> {
         if let Some((command, connector)) = self.command(ActionKind::Delete, connectors) {
             self.send(connector, command).await?;
         };
-        Ok(ActionResult::Handled)
+        Ok(Vec::new())
     }
 
     async fn pause(
         &mut self,
         connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
-    ) -> Result<ActionResult, ActionError> {
+    ) -> Result<Vec<Action>, ActionError> {
         if let Some((command, connector)) = self.command(ActionKind::Pause, connectors) {
             self.send(connector, command).await?;
         };
-        Ok(ActionResult::Handled)
+        Ok(Vec::new())
     }
 
     async fn start(
         &mut self,
         connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
-    ) -> Result<ActionResult, ActionError> {
+    ) -> Result<Vec<Action>, ActionError> {
         if let Some((command, connector)) = self.command(ActionKind::Start, connectors) {
             self.send(connector, command).await?;
         };
-        Ok(ActionResult::Handled)
+        Ok(Vec::new())
     }
 
     async fn pause_toggle(
         &mut self,
         connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
-    ) -> Result<ActionResult, ActionError> {
+    ) -> Result<Vec<Action>, ActionError> {
         if let Some((torrent_info, connector)) = self.selected_torrent_mut(connectors) {
             let mut kind = ActionKind::Pause;
             match torrent_info.state {
@@ -241,7 +241,7 @@ impl TorrentList {
             };
             self.send(connector, command).await?;
         }
-        Ok(ActionResult::Handled)
+        Ok(Vec::new())
     }
 
     fn command<'a>(
