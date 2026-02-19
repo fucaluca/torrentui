@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
+use std::process::Stdio;
 use std::sync::Arc;
 
 use crossterm::event::KeyEvent;
@@ -9,7 +10,7 @@ use ratatui::{buffer::Buffer, layout::Rect, widgets::StatefulWidget};
 use snafu::ResultExt;
 use tokio::sync::mpsc;
 
-use crate::action::{Action, ActionError, CommandSendFailedSnafu, GetActionFailedSnafu};
+use crate::action::{Action, ActionError, CommandSendFailedSnafu, GetActionFailedSnafu, PlaySnafu};
 use crate::connectors::{ActionKind, ConnectorCommands, ConnectorName};
 use crate::mode::KeyMode;
 use crate::settings::Settings;
@@ -155,6 +156,7 @@ impl TorrentList {
                 Action::Pause => self.pause(connectors).await,
                 Action::Start => self.start(connectors).await,
                 Action::PauseToggle => self.pause_toggle(connectors).await,
+                Action::Play => self.play(settings, connectors),
                 _ => Ok(vec![action]),
             }
         } else {
@@ -218,6 +220,39 @@ impl TorrentList {
     ) -> Result<Vec<Action>, ActionError> {
         if let Some((command, connector)) = self.command(ActionKind::Start, connectors) {
             self.send(connector, command).await?;
+        };
+        Ok(Vec::new())
+    }
+
+    fn play(
+        &mut self,
+        settings: &Settings,
+        connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
+    ) -> Result<Vec<Action>, ActionError> {
+        if let Some(selected) = self.table_state.selected()
+            && let Some((connector_name, _torrent_idx)) = self.torrent_ids.get(selected)
+            && let Some(connector) = settings.connectors.get(connector_name)
+            && let Some((torrent_info, _connector)) = self.selected_torrent_mut(connectors)
+        {
+            let url = connector.connector.url();
+            let playlist_url = format!("{}/torrents/{}/playlist", url, torrent_info.info_hash);
+
+            let mut parts = settings.player_cmd.split_whitespace();
+            if let Some(cmd) = parts.next() {
+                let mut command = std::process::Command::new(cmd);
+                for arg in parts {
+                    command.arg(arg);
+                }
+
+                command
+                    .arg(playlist_url)
+                    .arg("&")
+                    .stdin(Stdio::null())
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .spawn()
+                    .context(PlaySnafu)?;
+            }
         };
         Ok(Vec::new())
     }

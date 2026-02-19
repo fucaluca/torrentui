@@ -25,6 +25,8 @@ pub struct Settings {
     pub notification_timeout_millis: u64,
     #[serde(default = "defaults::show_help_auto")]
     pub show_help_auto: bool,
+    #[serde(default = "defaults::player_cmd")]
+    pub player_cmd: String,
 }
 
 #[derive(Debug)]

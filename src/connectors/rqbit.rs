@@ -43,6 +43,7 @@ pub trait Api: std::fmt::Debug + Sync + Send + 'static {
     async fn forget_torrent(&self, info_hash: &InfoHash) -> Result<(), ApiError>;
     async fn add_torrent(&self, source: Source) -> Result<(), ApiError>;
     async fn get_torrents(&self) -> Result<Vec<TorrentInfo>, ApiError>;
+    fn url(&self) -> String;
 }
 
 #[derive(Debug)]
@@ -139,6 +140,10 @@ impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
                 info_hash,
             })?;
         Ok(())
+    }
+
+    fn url(&self) -> String {
+        self.api.url()
     }
 }
 

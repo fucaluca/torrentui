@@ -231,6 +231,9 @@ impl Api for RqbitHttpApiV8 {
 
         self.handle_response_status(response, url).await
     }
+    fn url(&self) -> String {
+        self.base_url.clone()
+    }
 }
 
 #[cfg(test)]

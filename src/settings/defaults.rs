@@ -13,3 +13,7 @@ pub fn connector_selected() -> bool {
 pub fn show_help_auto() -> bool {
     true
 }
+
+pub fn player_cmd() -> String {
+    String::from("setsid mpv")
+}

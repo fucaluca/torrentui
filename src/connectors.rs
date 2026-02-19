@@ -33,6 +33,7 @@ pub trait Connector: std::fmt::Debug + Sync + Send {
     fn selected_mut(&mut self) -> &mut bool;
     #[expect(dead_code)]
     fn toggle_selected(&mut self);
+    fn url(&self) -> String;
 }
 
 pub type BoxedError = Box<dyn snafu::Error + Send + Sync + 'static>;

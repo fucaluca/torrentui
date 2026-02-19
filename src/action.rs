@@ -34,6 +34,7 @@ pub enum Action {
     Switch,
     Toggle,
     Send,
+    Play,
     NoOp,
     #[default]
     Next,
@@ -69,6 +70,7 @@ impl<'de> Deserialize<'de> for Action {
             "Switch" => Ok(Switch),
             "Toggle" => Ok(Toggle),
             "Send" => Ok(Send),
+            "Play" => Ok(Play),
             "NoOp" => Ok(NoOp),
             "Next" => Ok(Next),
             variant => Err(serde::de::Error::unknown_variant(
@@ -96,6 +98,7 @@ impl<'de> Deserialize<'de> for Action {
                     "Switch",
                     "Toggle",
                     "Send",
+                    "Play",
                     "NoOp",
                 ],
             )),
@@ -125,6 +128,7 @@ impl Display for Action {
             Self::Escape => write!(f, "Escape"),
             Self::Next => write!(f, "Next"),
             Self::Switch => write!(f, "Switch"),
+            Self::Play => write!(f, "Play"),
             Self::NoOp => write!(f, "NoOp"),
             Self::Input => write!(f, "Input"),
             Self::Backspace => write!(f, "Backspace"),
@@ -151,4 +155,6 @@ pub enum ActionError {
     },
     #[snafu(display("Failed to create magnet link"))]
     CreateMagnetError { source: MagnetError },
+    #[snafu(display("Failed to launch external player"))]
+    PlayError { source: std::io::Error },
 }

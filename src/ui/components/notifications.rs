@@ -53,6 +53,7 @@ impl From<ActionError> for Option<Notification> {
             GetActionFailed { .. } => Some(Notification::Error("Get action failed".into())),
             SendError { .. } => Some(Notification::Error("Send error".into())),
             CreateMagnetError { .. } => Some(Notification::Error("Create magnet error".into())),
+            PlayError { .. } => Some(Notification::error("Play failed")),
         }
     }
 }
