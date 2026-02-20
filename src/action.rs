@@ -157,4 +157,10 @@ pub enum ActionError {
     CreateMagnetError { source: MagnetError },
     #[snafu(display("Failed to launch external player"))]
     PlayError { source: std::io::Error },
+
+    #[snafu(display("Failed to initialize clipboard"))]
+    ClipboardInitError { source: arboard::Error },
+
+    #[snafu(display("Failed to get text from clipboard"))]
+    GetFromClipboardError { source: arboard::Error },
 }

@@ -48,12 +48,18 @@ impl From<ActionError> for Option<Notification> {
     fn from(value: ActionError) -> Self {
         use ActionError::*;
         match value {
-            CommandSendFailed { .. } => Some(Notification::Error("Command send failed".into())),
-            ConnectorNotFound => Some(Notification::Error("Connector not found".into())),
-            GetActionFailed { .. } => Some(Notification::Error("Get action failed".into())),
-            SendError { .. } => Some(Notification::Error("Send error".into())),
-            CreateMagnetError { .. } => Some(Notification::Error("Create magnet error".into())),
+            CommandSendFailed { .. } => Some(Notification::error("Command send failed")),
+            ConnectorNotFound => Some(Notification::error("Connector not found")),
+            GetActionFailed { .. } => Some(Notification::error("Get action failed")),
+            SendError { .. } => Some(Notification::error("Send error")),
+            CreateMagnetError { .. } => Some(Notification::error("Create magnet error")),
             PlayError { .. } => Some(Notification::error("Play failed")),
+            ClipboardInitError { .. } => {
+                Some(Notification::error("Clipboard initialization error"))
+            }
+            GetFromClipboardError { .. } => {
+                Some(Notification::error("Faied to get text from clipboard"))
+            }
         }
     }
 }

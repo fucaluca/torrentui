@@ -170,11 +170,9 @@ impl App {
                     match action {
                         Action::Quit => self.should_quit = true,
                         Action::AddTorrent => {
+                            self.components.add_torrent.update();
                             self.switch_screen(CurrentScreen::AddTorrent(AddTorrentMode::Input))
                         }
-                        // Action::AddTorrent => {
-                        //     self.switch_screen(CurrentScreen::AddTorrent(AddTorrentMode::default()))
-                        // }
                         Action::Help(mode) => self.show_help_on_current_screen(Some(mode))?,
                         Action::Next => {
                             if self.settings.show_help_auto {

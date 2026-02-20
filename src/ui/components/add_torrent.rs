@@ -10,14 +10,14 @@ use ratatui::{
         Widget,
     },
 };
-use snafu::{ResultExt, Snafu};
+use snafu::ResultExt;
 use tokio::sync::mpsc;
 
 use crate::{
-    action::{Action, CreateMagnetSnafu, SendSnafu},
+    action::{Action, ClipboardInitSnafu, CreateMagnetSnafu, GetFromClipboardSnafu, SendSnafu},
     connectors::{ConnectorCommands, ConnectorName},
     settings::Settings,
-    torrent::{Magnet, Source},
+    torrent::{self, Magnet, Source},
     ui::{Drawable, assets::Symbols},
 };
 use crate::{
@@ -28,12 +28,18 @@ use crate::{
     ui::assets,
 };
 
-#[derive(Debug, Snafu)]
+/* #[derive(Debug, Snafu)]
 #[expect(unused)]
 pub enum AddTorrentError {
     #[snafu(display("Failed to initialize clipboard"))]
     ClipboardError { source: arboard::Error },
-}
+
+    #[snafu(display("Failed to get text from clipboard"))]
+    GetFromClipboardError { source: arboard::Error },
+
+    #[snafu(display("Failed to create magnet link"))]
+    CreateMagnetError { source: MagnetError },
+} */
 
 struct Connector {
     name: ConnectorName,
@@ -50,6 +56,7 @@ impl Connector {
 pub struct AddTorrent {
     table_state: TableState,
     value: String,
+    torrent_source: Option<torrent::Source>,
     selection_start: Option<usize>,
     cursor_position: usize,
     insert_mode: bool,
@@ -234,6 +241,7 @@ impl AddTorrent {
                     }
                 }
                 Input => {
+                    self.torrent_source = None;
                     self.insert_mode = true;
                     Ok(Vec::new())
                 }
@@ -312,8 +320,12 @@ impl AddTorrent {
         &self,
         connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
     ) -> Result<Vec<Action>, ActionError> {
-        let magnet = Magnet::new(self.value.clone()).context(CreateMagnetSnafu)?;
-        let source = Source::Magnet(magnet);
+        let source = if let Some(source) = &self.torrent_source {
+            source.clone()
+        } else {
+            let magnet = Magnet::new(self.value.clone()).context(CreateMagnetSnafu)?;
+            Source::Magnet(magnet)
+        };
         let command = ConnectorCommands::Add(source);
         self.send(connectors, command).await
     }
@@ -339,6 +351,28 @@ impl AddTorrent {
         {
             connector.toggle_selected();
         }
+    }
+
+    pub fn update(&mut self) {
+        self.try_insert_magnet();
+    }
+
+    fn try_insert_magnet(&mut self) {
+        match self.get_from_clipboard() {
+            Ok(maybe_magnet) => match Magnet::new(maybe_magnet.clone()) {
+                Ok(magnet) => {
+                    self.value = maybe_magnet;
+                    self.torrent_source = Some(Source::Magnet(magnet));
+                }
+                Err(_) => { /* nothing to do */ }
+            },
+            Err(_) => { /* nothing to do */ }
+        }
+    }
+
+    fn get_from_clipboard(&self) -> Result<String, ActionError> {
+        let mut clipboard = arboard::Clipboard::new().context(ClipboardInitSnafu)?;
+        clipboard.get_text().context(GetFromClipboardSnafu)
     }
 
     pub fn insert(&mut self, key_code: KeyCode) {
