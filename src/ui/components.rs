@@ -9,9 +9,8 @@ pub use notifications::Notifications;
 pub use torrent_list::TorrentList;
 
 use crate::{
-    action::Action,
     settings::Settings,
-    ui::{add_torrent::AddTorrent, notifications::Notification, which_key::WhichKey},
+    ui::{add_torrent::AddTorrent, which_key::WhichKey},
 };
 
 pub struct Components {

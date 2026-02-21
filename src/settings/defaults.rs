@@ -17,3 +17,7 @@ pub fn show_help_auto() -> bool {
 pub fn player_cmd() -> String {
     String::from("setsid mpv")
 }
+
+pub fn auto_insert_torrent() -> bool {
+    true
+}

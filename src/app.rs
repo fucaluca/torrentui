@@ -165,29 +165,35 @@ impl App {
             }
         };
         match result {
-            Ok(actions) => {
-                for action in actions.iter() {
-                    match action {
-                        Action::Quit => self.should_quit = true,
-                        Action::AddTorrent => {
-                            self.components.add_torrent.update();
-                            self.switch_screen(CurrentScreen::AddTorrent(AddTorrentMode::Input))
-                        }
-                        Action::Help(mode) => self.show_help_on_current_screen(Some(mode))?,
-                        Action::Next => {
-                            if self.settings.show_help_auto {
-                                self.show_help_on_current_screen(None)?;
-                            }
-                        }
-                        Action::Escape => {
-                            if self.components.which_key.is_hidden() {
-                                self.current_screen = CurrentScreen::default();
-                            } else {
-                                self.components.which_key.hide();
-                            }
-                        }
-                        _ => self.components.which_key.hide(),
+            Ok(action) => {
+                if action.is_none() {
+                    self.components.which_key.hide();
+                    return Ok(());
+                }
+                match action.unwrap() {
+                    Action::Quit => self.should_quit = true,
+                    Action::AddTorrent => {
+                        self.components.add_torrent.update(&self.settings);
+                        self.switch_screen(CurrentScreen::AddTorrent(AddTorrentMode::Input))
                     }
+                    Action::Help(mode) => self.show_help_on_current_screen(Some(&mode))?,
+                    Action::Next => {
+                        if self.settings.show_help_auto {
+                            self.show_help_on_current_screen(None)?;
+                        }
+                    }
+                    Action::Escape => {
+                        if self.components.which_key.is_hidden() {
+                            self.current_screen = CurrentScreen::default();
+                        } else {
+                            self.components.which_key.hide();
+                        }
+                    }
+                    Action::DefaultScreen => {
+                        self.components.which_key.hide();
+                        self.current_screen = CurrentScreen::default();
+                    }
+                    _ => self.components.which_key.hide(),
                 }
             }
             Err(e) => self.notify(e),

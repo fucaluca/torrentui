@@ -1,8 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::KeyEvent;
 use ratatui::{
-    buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
     text::Line,
     widgets::{
@@ -17,29 +16,18 @@ use crate::{
     action::{Action, ClipboardInitSnafu, CreateMagnetSnafu, GetFromClipboardSnafu, SendSnafu},
     connectors::{ConnectorCommands, ConnectorName},
     settings::Settings,
-    torrent::{self, Magnet, Source},
-    ui::{Drawable, assets::Symbols},
+    torrent::{Magnet, Source},
+    ui::{
+        Drawable,
+        assets::{self, Symbols},
+    },
 };
 use crate::{
     action::{ActionError, GetActionFailedSnafu},
     app::CurrentScreen,
     mode::{AddTorrentMode, KeyMode},
     settings::styles::StyleMode,
-    ui::assets,
 };
-
-/* #[derive(Debug, Snafu)]
-#[expect(unused)]
-pub enum AddTorrentError {
-    #[snafu(display("Failed to initialize clipboard"))]
-    ClipboardError { source: arboard::Error },
-
-    #[snafu(display("Failed to get text from clipboard"))]
-    GetFromClipboardError { source: arboard::Error },
-
-    #[snafu(display("Failed to create magnet link"))]
-    CreateMagnetError { source: MagnetError },
-} */
 
 struct Connector {
     name: ConnectorName,
@@ -55,11 +43,8 @@ impl Connector {
 #[derive(Default)]
 pub struct AddTorrent {
     table_state: TableState,
-    value: String,
-    torrent_source: Option<torrent::Source>,
-    selection_start: Option<usize>,
-    cursor_position: usize,
-    insert_mode: bool,
+    text_area: String,
+    torrent_source: Option<Source>,
     connectors: Vec<Connector>,
     mode: AddTorrentMode,
 }
@@ -71,70 +56,53 @@ impl Drawable for AddTorrent {
         area: ratatui::prelude::Rect,
         settings: &Settings,
     ) {
-        let centered_area = self.centered_rect(50, 10, area);
-        Clear.render(centered_area, buf);
+        let borders_height: u16 = 2;
+        let text_area_height: u16 = 1;
+        let divider_height: u16 = 1;
+        let connectors_count: u16 = settings.connectors.len().min(area.height as usize) as u16;
+        let height: u16 = borders_height + text_area_height + divider_height + connectors_count;
+        let width: u16 = 80;
+        let centered_area =
+            self.centered_rect(width.min(area.width), height.min(area.height), area);
+
         let style = settings
             .styles
             .get_style(&StyleMode::AddTorrent(self.mode), "border");
+
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .style(style);
 
         let inner_area = block.inner(centered_area);
-        block.render(centered_area, buf);
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(1),
-                Constraint::Length(1),
-                Constraint::Min(3),
+                Constraint::Length(text_area_height),
+                Constraint::Length(divider_height),
+                Constraint::Min(connectors_count),
             ])
             .split(inner_area);
-
         let input_area = chunks[0];
-        let offset = self
-            .cursor_position
-            .saturating_sub((input_area.width - 1) as usize);
-        let mut display_text = self.value.chars().skip(offset).collect::<String>();
+        let divider_area = chunks[1];
+        let connectors_area = chunks[2];
 
-        if matches!(self.mode, AddTorrentMode::Input) {
-            let input_style = if self.insert_mode {
-                settings
-                    .styles
-                    .get_style(&StyleMode::AddTorrent(AddTorrentMode::Input), "insert_mode")
-            } else {
-                settings
-                    .styles
-                    .get_style(&StyleMode::AddTorrent(AddTorrentMode::Input), "default")
-            };
-            display_text.insert(
-                self.cursor_position.saturating_sub(offset),
-                assets::Symbols::CURSOR,
-            );
-
-            Paragraph::new(display_text)
-                .style(input_style)
-                .render(input_area, buf);
-            self.highlight_selected(offset, input_area, buf, settings);
-            Line::from(Symbols::ROW_DIVIDER.repeat(chunks[1].width as usize))
-                .style(input_style)
-                .render(chunks[1], buf);
-        } else {
-            let input_style = settings
-                .styles
-                .get_style(&StyleMode::AddTorrent(AddTorrentMode::Connectors), "input");
-            Paragraph::new(display_text)
-                .style(input_style)
-                .render(input_area, buf);
-            Line::from(Symbols::ROW_DIVIDER.repeat(chunks[1].width as usize))
-                .style(input_style)
-                .render(chunks[1], buf);
-        }
+        let text_area_style = settings
+            .styles
+            .get_style(&StyleMode::AddTorrent(self.mode), "input");
 
         let table = self.build_table(settings);
-        StatefulWidget::render(table, chunks[2], buf, &mut self.table_state)
+
+        Clear.render(centered_area, buf);
+        block.render(centered_area, buf);
+        Paragraph::new(self.text_area.clone())
+            .style(text_area_style)
+            .render(input_area, buf);
+        Line::from(Symbols::ROW_DIVIDER.repeat(divider_area.width as usize))
+            .style(text_area_style)
+            .render(divider_area, buf);
+        StatefulWidget::render(table, connectors_area, buf, &mut self.table_state)
     }
 }
 
@@ -154,187 +122,134 @@ impl AddTorrent {
         }
     }
 
-    fn highlight_selected(
-        &mut self,
-        skip: usize,
-        area: Rect,
-        buf: &mut Buffer,
-        settings: &Settings,
-    ) {
-        if let Some(start) = self.selection_start {
-            let start = start.saturating_sub(skip) as u16;
-            let end = self.cursor_position.saturating_sub(skip) as u16;
-            let highlight_style = settings
-                .styles
-                .get_style(&StyleMode::AddTorrent(self.mode), "input_highlight");
-
-            for i in start.min(end + 1)..end.max(start + 1) {
-                if let Some(cell) = buf.cell_mut((area.x + i, area.y)) {
-                    cell.set_style(highlight_style);
-                }
-            }
-        }
-    }
-
     pub async fn handle_key_events(
         &mut self,
         key_event: KeyEvent,
         settings: &mut Settings,
         connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
-    ) -> Result<Vec<Action>, ActionError> {
-        use Action::*;
-        let maybe_action = settings
-            .keybindings
-            .action(KeyMode::AddTorrent(self.mode), key_event)
-            .context(GetActionFailedSnafu)?;
-        if self.insert_mode {
-            match maybe_action {
-                Some(Escape) => {
-                    self.insert_mode = false;
-                    if self.selection_start.is_some() {
-                        self.selection_start = None;
-                    }
-                    Ok(Vec::new())
-                }
-                Some(Backspace) => {
-                    if let Some(start) = self.selection_start {
-                        self.value = self
-                            .value
-                            .chars()
-                            .enumerate()
-                            .filter(|(i, _)| {
-                                i < &start.min(self.cursor_position)
-                                    || i >= &self.cursor_position.max(start)
-                            })
-                            .map(|s| s.1)
-                            .collect();
-                        self.cursor_position = start.min(self.cursor_position);
-                        self.selection_start = None;
-                    } else if self.value.chars().count() > 0 && self.cursor_position > 0 {
-                        self.value.remove(self.cursor_position.saturating_sub(1));
-                        self.cursor_position = self.cursor_position.saturating_sub(1);
-                    }
-                    Ok(Vec::new())
-                }
-                Some(SelectAll) => {
-                    if self.selection_start.is_some() {
-                        self.selection_start = Some(0);
-                        self.cursor_position = self.value.chars().count();
-                    } else {
-                        self.selection_start = Some(0)
-                    }
-                    Ok(Vec::new())
-                }
-                Some(_) | None => {
-                    self.insert(key_event.code);
-                    Ok(Vec::new())
-                }
+    ) -> Result<Option<Action>, ActionError> {
+        use AddTorrentMode::*;
+        match self.mode {
+            Input => self.edit_mode_action(key_event, settings, connectors).await,
+            Connectors => {
+                self.connector_mode_action(key_event, settings, connectors)
+                    .await
             }
-        } else if let Some(action) = maybe_action {
-            match action {
-                Escape => {
-                    if self.selection_start.is_some() {
-                        self.selection_start = None;
-                        Ok(Vec::new())
-                    } else {
-                        Ok(vec![action])
-                    }
-                }
-                Input => {
-                    self.torrent_source = None;
-                    self.insert_mode = true;
-                    Ok(Vec::new())
-                }
-                Left => {
-                    self.cursor_position = self.cursor_position.saturating_sub(1);
-                    Ok(Vec::new())
-                }
-                Right => {
-                    self.cursor_position = self.value.chars().count().min(self.cursor_position + 1);
-                    Ok(Vec::new())
-                }
-                Select => {
-                    if self.selection_start.is_some() {
-                        self.selection_start = None;
-                    } else {
-                        self.selection_start = Some(self.cursor_position);
-                    }
-                    Ok(Vec::new())
-                }
-                SelectAll => {
-                    if self.selection_start.is_some() {
-                        self.selection_start = Some(0);
-                        self.cursor_position = self.value.chars().count();
-                    } else {
-                        self.selection_start = Some(0)
-                    }
-                    Ok(Vec::new())
-                }
-                Backspace => {
-                    if let Some(start) = self.selection_start {
-                        self.value = self
-                            .value
-                            .chars()
-                            .enumerate()
-                            .filter(|(i, _)| {
-                                i < &start.min(self.cursor_position)
-                                    || i >= &self.cursor_position.max(start)
-                            })
-                            .map(|s| s.1)
-                            .collect();
-                        self.cursor_position = start.min(self.cursor_position);
-                        self.selection_start = None;
-                    } else if self.value.chars().count() > 0 && self.cursor_position > 0 {
-                        self.value.remove(self.cursor_position.saturating_sub(1));
-                        self.cursor_position = self.cursor_position.saturating_sub(1);
-                    }
-                    Ok(Vec::new())
-                }
-                Switch => {
-                    self.mode.toggle();
-                    Ok(Vec::new())
-                }
-                Up => {
-                    self.table_state.select_previous();
-                    Ok(Vec::new())
-                }
-                Down => {
-                    self.table_state.select_next();
-                    Ok(Vec::new())
-                }
-                Toggle => {
-                    self.toggle_connector();
-                    Ok(Vec::new())
-                }
-                Send => self.send_new_torrent(connectors).await,
-                Help(_) => Ok(vec![Help(CurrentScreen::AddTorrent(self.mode))]),
+        }
+    }
 
-                _ => Ok(vec![action]),
+    async fn edit_mode_action(
+        &mut self,
+        key_event: KeyEvent,
+        settings: &mut Settings,
+        connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
+    ) -> Result<Option<Action>, ActionError> {
+        let action = settings
+            .keybindings
+            .action(KeyMode::AddTorrent(AddTorrentMode::Input), key_event)
+            .context(GetActionFailedSnafu)?;
+
+        if action.is_none() {
+            return Ok(None);
+        }
+
+        use Action::*;
+        match action.unwrap() {
+            Paste => {
+                let text = self.get_from_clipboard()?;
+                self.text_area = text.clone();
+                let magnet = Magnet::new(text).context(CreateMagnetSnafu)?;
+                self.torrent_source = Some(Source::Magnet(magnet));
+                Ok(None)
             }
-        } else {
-            Ok(vec![Action::NoOp])
+            Backspace => {
+                self.text_area.clear();
+                self.torrent_source = None;
+                Ok(None)
+            }
+            Enter => {
+                if self.torrent_source.is_none() {
+                    return Ok(None);
+                }
+                if connectors.len() == 1 {
+                    self.send_new_torrent(connectors).await?;
+                    Ok(Some(Action::DefaultScreen))
+                } else {
+                    self.mode = AddTorrentMode::Connectors;
+                    Ok(None)
+                }
+            }
+            Switch => {
+                self.mode.toggle();
+                Ok(None)
+            }
+            Help(_) => Ok(Some(Help(CurrentScreen::AddTorrent(AddTorrentMode::Input)))),
+            action => Ok(Some(action)),
+        }
+    }
+
+    async fn connector_mode_action(
+        &mut self,
+        key_event: KeyEvent,
+        settings: &mut Settings,
+        connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
+    ) -> Result<Option<Action>, ActionError> {
+        let action = settings
+            .keybindings
+            .action(KeyMode::AddTorrent(AddTorrentMode::Connectors), key_event)
+            .context(GetActionFailedSnafu)?;
+        if action.is_none() {
+            return Ok(None);
+        }
+        use Action::*;
+        match action.unwrap() {
+            Send => {
+                self.send_new_torrent(connectors).await?;
+                Ok(Some(Action::DefaultScreen))
+            }
+            Switch => {
+                self.mode.toggle();
+                Ok(None)
+            }
+            Toggle => {
+                self.toggle_connector();
+                Ok(None)
+            }
+            Up => {
+                self.table_state.select_previous();
+                Ok(None)
+            }
+            Down => {
+                self.table_state.select_next();
+                Ok(None)
+            }
+            Help(_) => Ok(Some(Help(CurrentScreen::AddTorrent(
+                AddTorrentMode::Connectors,
+            )))),
+            action => Ok(Some(action)),
         }
     }
 
     async fn send_new_torrent(
         &self,
         connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
-    ) -> Result<Vec<Action>, ActionError> {
+    ) -> Result<(), ActionError> {
         let source = if let Some(source) = &self.torrent_source {
             source.clone()
         } else {
-            let magnet = Magnet::new(self.value.clone()).context(CreateMagnetSnafu)?;
+            let magnet = Magnet::new(self.text_area.clone()).context(CreateMagnetSnafu)?;
             Source::Magnet(magnet)
         };
         let command = ConnectorCommands::Add(source);
-        self.send(connectors, command).await
+        self.send(connectors, command).await?;
+        Ok(())
     }
 
     async fn send(
         &self,
         connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
         command: ConnectorCommands,
-    ) -> Result<Vec<Action>, ActionError> {
+    ) -> Result<(), ActionError> {
         for con in &self.connectors {
             if con.selected
                 && let Some(connector) = connectors.get_mut(&con.name.to_string())
@@ -342,7 +257,7 @@ impl AddTorrent {
                 connector.send(command.clone()).await.context(SendSnafu)?
             }
         }
-        Ok(vec![Action::Escape, Action::Escape])
+        Ok(())
     }
 
     fn toggle_connector(&mut self) {
@@ -353,15 +268,17 @@ impl AddTorrent {
         }
     }
 
-    pub fn update(&mut self) {
-        self.try_insert_magnet();
+    pub fn update(&mut self, settings: &Settings) {
+        if settings.auto_insert_torrent {
+            self.try_insert_magnet_silent();
+        }
     }
 
-    fn try_insert_magnet(&mut self) {
+    fn try_insert_magnet_silent(&mut self) {
         match self.get_from_clipboard() {
             Ok(maybe_magnet) => match Magnet::new(maybe_magnet.clone()) {
                 Ok(magnet) => {
-                    self.value = maybe_magnet;
+                    self.text_area = maybe_magnet;
                     self.torrent_source = Some(Source::Magnet(magnet));
                 }
                 Err(_) => { /* nothing to do */ }
@@ -372,43 +289,35 @@ impl AddTorrent {
 
     fn get_from_clipboard(&self) -> Result<String, ActionError> {
         let mut clipboard = arboard::Clipboard::new().context(ClipboardInitSnafu)?;
-        clipboard.get_text().context(GetFromClipboardSnafu)
+        Ok(clipboard
+            .get_text()
+            .context(GetFromClipboardSnafu)?
+            .replace(['\n', '\r'], ""))
     }
-
-    pub fn insert(&mut self, key_code: KeyCode) {
-        #[expect(clippy::single_match)]
-        match key_code {
-            KeyCode::Char(char) => {
-                self.value.insert(self.cursor_position, char);
-                self.cursor_position += 1;
-            }
-            _ => {}
-        }
-    }
-
-    /* fn selected_connector(&mut self, settings: &mut Settings, idx: usize) {
-        settings.connectors.get(key)
-    } */
 
     fn build_table(&mut self, settings: &Settings) -> Table<'static> {
         let rows: Vec<Row<'_>> = self
             .connectors
             .iter()
-            .map(|con| {
+            .map(|connector| {
                 let style;
                 let icon;
-                if con.selected {
+                if connector.selected {
                     style = settings
                         .styles
                         .get_style(&StyleMode::AddTorrent(self.mode), "selected_connector");
-                    icon = "󰄵";
+                    icon = assets::Icons::CHECKED;
                 } else {
                     style = settings
                         .styles
-                        .get_style(&StyleMode::AddTorrent(self.mode), "unselected_connector");
-                    icon = "󰄱";
+                        .get_style(&StyleMode::AddTorrent(self.mode), "default");
+                    icon = assets::Icons::UNCHECKED;
                 }
-                Row::new(vec![Line::from(icon), Line::from(con.name.to_string())]).style(style)
+                Row::new(vec![
+                    Line::from(icon.to_string()),
+                    Line::from(connector.name.to_string()),
+                ])
+                .style(style)
             })
             .collect();
         let widths = [Constraint::Length(2), Constraint::Fill(1)];

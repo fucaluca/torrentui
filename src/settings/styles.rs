@@ -3,7 +3,7 @@ use std::{collections::HashMap, ops::Deref};
 use ratatui::style::{Color, Modifier, Style};
 use serde::Deserialize;
 
-use crate::{mode::AddTorrentMode, torrent::State, ui::which_key::WhichKey};
+use crate::{mode::AddTorrentMode, torrent::State};
 
 #[derive(Debug, Default, Deserialize, Hash, Eq, PartialEq)]
 pub enum StyleMode {

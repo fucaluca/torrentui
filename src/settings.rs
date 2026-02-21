@@ -27,6 +27,8 @@ pub struct Settings {
     pub show_help_auto: bool,
     #[serde(default = "defaults::player_cmd")]
     pub player_cmd: String,
+    #[serde(default = "defaults::auto_insert_torrent")]
+    pub auto_insert_torrent: bool,
 }
 
 #[derive(Debug)]

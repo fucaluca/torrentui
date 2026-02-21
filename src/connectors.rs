@@ -86,7 +86,6 @@ pub enum ConnectorError {
 
 #[derive(Debug, Clone)]
 pub enum ConnectorCommands {
-    #[cfg_attr(not(test), expect(dead_code))]
     Add(Source),
     Action {
         kind: ActionKind,

@@ -12,6 +12,8 @@ impl Icons {
     pub const DOWNLOADING: char = '󰇚';
     pub const ERROR: char = '';
     pub const WHICHKEY_DIVIDER: char = '';
+    pub const CHECKED: char = '󰄵';
+    pub const UNCHECKED: char = '󰄱';
 
     pub fn status(torrent_info: &TorrentInfo) -> char {
         match torrent_info.state {
