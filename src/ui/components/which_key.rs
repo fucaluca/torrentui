@@ -220,7 +220,7 @@ mod tests {
     use crate::{
         action::Action,
         settings::{ConfigSource, Settings, keybindings::KeyBindingsNode},
-        ui::{Drawable, which_key::WhichKey},
+        ui::{Drawable, assets, which_key::WhichKey},
     };
 
     use pretty_assertions::assert_eq;
@@ -230,8 +230,7 @@ mod tests {
         let config_toml = r#"
             [styles.WhichKey]
             key = "green on rgb:0,0,0"
-            desc = "blue on rgb:0,0,0"
-            next = "red on rgb:0,0,0"
+            description = "blue on rgb:0,0,0"
             default = "yellow on rgb:0,0,0"
         "#;
         let config_source = ConfigSource::String(config_toml.into());
@@ -254,49 +253,40 @@ mod tests {
 
         which_key.show(&keybindings);
 
-        let expected_lines: Vec<String> = ["╭ Commands ╮", "│   q Exit │", "╰── {vers} ╯"]
-            .iter()
-            .map(|line| line.replace("{vers}", format!("v{}", env!("CARGO_PKG_VERSION")).as_str()))
-            .collect::<Vec<String>>();
+        let expected_lines = [
+            "╭ Commands ╮".to_string(),
+            format!("│ q {} Exit │", assets::Icons::WHICHKEY_DIVIDER),
+            format!("╰── v{} ╯", env!("CARGO_PKG_VERSION")),
+        ];
+        //   012345679012
+        // 0 ╭ Commands ╮
+        // 1 │ q - Exit │
+        // 2 ╰── v0.1.0 ╯
+
         let mut expected = Buffer::with_lines(expected_lines);
 
         let width = 12;
         let height = 3;
+
+        // NOTE: default
         expected.set_style(
-            Rect::new(10, 1, 2, 1),
+            Rect::new(0, 0, width, height),
             Style::default().fg(Color::Yellow).bg(Color::Rgb(0, 0, 0)),
         );
+        // NOTE: key
+        expected.set_style(
+            Rect::new(2, 1, 1, 1),
+            Style::default().fg(Color::Green).bg(Color::Rgb(0, 0, 0)),
+        );
+        // NOTE: divider
+        expected.set_style(
+            Rect::new(4, 1, 1, 1),
+            Style::default().fg(Color::Yellow).bg(Color::Rgb(0, 0, 0)),
+        );
+        // NOTE: description
         expected.set_style(
             Rect::new(6, 1, 4, 1),
             Style::default().fg(Color::Blue).bg(Color::Rgb(0, 0, 0)),
-        );
-        expected.set_style(
-            Rect::new(5, 1, 1, 1),
-            Style::default().fg(Color::Yellow).bg(Color::Rgb(0, 0, 0)),
-        );
-        expected.set_style(
-            Rect::new(2, 1, 3, 1),
-            Style::default().fg(Color::Green).bg(Color::Rgb(0, 0, 0)),
-        );
-        expected.set_style(
-            Rect::new(0, 0, width, 1),
-            Style::default().fg(Color::Yellow).bg(Color::Rgb(0, 0, 0)),
-        );
-        expected.set_style(
-            Rect::new(1, 1, 1, 1),
-            Style::default().fg(Color::Yellow).bg(Color::Rgb(0, 0, 0)),
-        );
-        expected.set_style(
-            Rect::new(0, 2, width, 1),
-            Style::default().fg(Color::Yellow).bg(Color::Rgb(0, 0, 0)),
-        );
-        expected.set_style(
-            Rect::new(0, 0, 1, 3),
-            Style::default().fg(Color::Yellow).bg(Color::Rgb(0, 0, 0)),
-        );
-        expected.set_style(
-            Rect::new(11, 0, 1, 3),
-            Style::default().fg(Color::Yellow).bg(Color::Rgb(0, 0, 0)),
         );
 
         let backend = TestBackend::new(width, height);
@@ -343,10 +333,11 @@ mod tests {
 
         which_key.show(&keybindings);
 
-        let expected_lines: Vec<String> = ["╭ Commands ╮", "│    q +   │", "╰── {vers} ╯"]
-            .iter()
-            .map(|line| line.replace("{vers}", format!("v{}", env!("CARGO_PKG_VERSION")).as_str()))
-            .collect::<Vec<String>>();
+        let expected_lines = [
+            "╭ Commands ╮".to_string(),
+            format!("│ q  {}    │", assets::Symbols::WHICHKEY_NEXT_SYMBOL),
+            format!("╰── v{} ╯", env!("CARGO_PKG_VERSION")),
+        ];
         let expected = Buffer::with_lines(expected_lines);
 
         let width = 12;
