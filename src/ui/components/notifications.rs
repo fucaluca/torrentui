@@ -104,7 +104,6 @@ impl Notifications {
         self.notification = n.into();
     }
 
-    #[cfg_attr(not(test), expect(dead_code))]
     pub fn on_user_interaction(&mut self) {
         if self.notification.is_some() {
             self.last_interaction = Some(Instant::now());

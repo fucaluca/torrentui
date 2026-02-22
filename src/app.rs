@@ -150,6 +150,7 @@ impl App {
     }
 
     async fn handle_key_events(&mut self, key_event: KeyEvent) -> Result<()> {
+        self.components.notifications.on_user_interaction();
         let result = match self.current_screen {
             CurrentScreen::TorrentList => {
                 self.components
