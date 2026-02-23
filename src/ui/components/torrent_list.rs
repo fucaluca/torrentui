@@ -80,48 +80,48 @@ impl TorrentList {
 
     fn build_row(
         &self,
-        connector_name: ConnectorName,
-        torrent_info: &TorrentInfo,
+        connector: ConnectorName,
+        info: &TorrentInfo,
         settings: &Settings,
         width: u16,
     ) -> Row<'static> {
-        let cell = Cell::new(connector_name, torrent_info, width, settings);
+        let cell = Cell::new();
 
         Row::new(vec![
             Column::builder()
-                .top(cell.status_with_name())
-                .bottom(cell.connector_with_folder())
-                .divider(cell.info_divider())
+                .top(cell.status_with_name(info, settings))
+                .bottom(cell.connector_with_folder(connector, info, settings))
+                .divider(cell.info_divider(info, width, settings))
                 .alignment(Alignment::Left),
             Column::builder()
-                .top(cell.peers_icon())
-                .bottom(cell.peers())
-                .divider(cell.peers_divider())
+                .top(cell.peers_icon(info, settings))
+                .bottom(cell.peers(info, settings))
+                .divider(cell.peers_divider(info, settings))
                 .alignment(Alignment::Center),
             Column::builder()
-                .top(cell.total_size())
-                .bottom(cell.time_remaining())
-                .divider(cell.size_with_time_divider())
+                .top(cell.total_size(info, settings))
+                .bottom(cell.time_remaining(info, settings))
+                .divider(cell.size_with_time_divider(info, settings))
                 .alignment(Alignment::Center),
             Column::builder()
-                .top(cell.uploading_icon())
-                .bottom(cell.downloading_icon())
-                .divider(cell.ul_dl_icons_divider())
+                .top(cell.uploading_icon(info, settings))
+                .bottom(cell.downloading_icon(info, settings))
+                .divider(cell.ul_dl_icons_divider(info, settings))
                 .alignment(Alignment::Center),
             Column::builder()
-                .top(cell.upload_speed())
-                .bottom(cell.download_speed())
-                .divider(cell.speed_divider())
+                .top(cell.upload_speed(info, settings))
+                .bottom(cell.download_speed(info, settings))
+                .divider(cell.speed_divider(info, settings))
                 .alignment(Alignment::Right),
             Column::builder()
-                .top(cell.uploaded_size())
-                .bottom(cell.downloaded_size())
-                .divider(cell.progress_divider())
+                .top(cell.uploaded_size(info, settings))
+                .bottom(cell.downloaded_size(info, settings))
+                .divider(cell.progress_divider(info, settings))
                 .alignment(Alignment::Right),
             Column::builder()
-                .top(cell.rate())
-                .bottom(cell.progress_percent())
-                .divider(cell.rate_divider())
+                .top(cell.rate(info, settings))
+                .bottom(cell.progress_percent(info, settings))
+                .divider(cell.rate_divider(info, settings))
                 .alignment(Alignment::Right),
         ])
         .height(3)

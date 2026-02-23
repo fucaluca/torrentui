@@ -34,6 +34,17 @@ pub struct TorrentInfo {
     pub peer_seen: u32,
 }
 
+impl TorrentInfo {
+    pub fn speed(&self, direction: &str) -> f32 {
+        // TODO: make enum
+        if direction == "upload" {
+            self.upload_speed_mpbs
+        } else {
+            self.download_speed_mpbs
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Hash, Eq, PartialEq)]
 #[cfg_attr(test, derive(fake::Dummy, Clone))]
 pub enum State {
