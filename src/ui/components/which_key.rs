@@ -5,7 +5,7 @@ use ratatui::{
 };
 
 use crate::{
-    action::Action,
+    domain::action::Action,
     settings::{Settings, keybindings::KeyBindingsNode, styles::StyleMode},
     ui::{Drawable, assets},
 };
@@ -218,7 +218,7 @@ mod tests {
     };
 
     use crate::{
-        action::Action,
+        domain::action::Action,
         settings::{Settings, keybindings::KeyBindingsNode},
         ui::{Drawable, assets, which_key::WhichKey},
     };
@@ -233,7 +233,7 @@ mod tests {
             description = "blue on rgb:0,0,0"
             default = "yellow on rgb:0,0,0"
         "#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
 
         let mut which_key = WhichKey::new();
 
@@ -303,7 +303,7 @@ mod tests {
     #[test]
     fn draw_nested() -> color_eyre::Result<()> {
         let config_str = r#""#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
 
         let mut which_key = WhichKey::new();
 

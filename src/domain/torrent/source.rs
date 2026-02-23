@@ -66,7 +66,7 @@ impl Magnet {
 
 #[cfg(test)]
 mod test {
-    use crate::torrent::InfoHash;
+    use crate::domain::torrent::InfoHash;
 
     use super::{Magnet, MagnetError};
 

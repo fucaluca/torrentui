@@ -34,13 +34,24 @@ pub struct TorrentInfo {
     pub peer_seen: u32,
 }
 
+pub enum Direction {
+    Upload,
+    Download,
+}
+impl Direction {
+    pub fn to_str(&self) -> &str {
+        match self {
+            Self::Upload => "upload",
+            Self::Download => "download",
+        }
+    }
+}
+
 impl TorrentInfo {
-    pub fn speed(&self, direction: &str) -> f32 {
-        // TODO: make enum
-        if direction == "upload" {
-            self.upload_speed_mpbs
-        } else {
-            self.download_speed_mpbs
+    pub fn speed(&self, direction: &Direction) -> f32 {
+        match direction {
+            Direction::Upload => self.upload_speed_mpbs,
+            Direction::Download => self.download_speed_mpbs,
         }
     }
 }

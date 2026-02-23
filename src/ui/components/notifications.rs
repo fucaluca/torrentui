@@ -7,8 +7,8 @@ use ratatui::{
 };
 
 use crate::{
-    action::ActionError,
     connectors::ConnectorEvents,
+    domain::action::ActionError,
     settings::{Settings, styles::StyleMode},
     ui::Drawable,
 };
@@ -169,7 +169,7 @@ mod tests {
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
         let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(ConnectorEvents::AddOk);
@@ -193,7 +193,7 @@ mod tests {
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
         let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(ConnectorEvents::StartOk);
@@ -219,7 +219,7 @@ mod tests {
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
         let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(ConnectorEvents::PauseOk);
@@ -245,7 +245,7 @@ mod tests {
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
         let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(ConnectorEvents::ForgetOk);
@@ -271,7 +271,7 @@ mod tests {
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
         let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(ConnectorEvents::DeleteOk);
@@ -297,7 +297,7 @@ mod tests {
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
         let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(Notification::Error(String::from("Some error")));
@@ -324,7 +324,7 @@ mod tests {
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
         let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(Notification::Error(String::from("Some error")));

@@ -1,4 +1,4 @@
-use crate::torrent::{State, TorrentInfo};
+use crate::domain::torrent::{State, TorrentInfo};
 
 pub struct Icons;
 

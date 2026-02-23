@@ -138,8 +138,8 @@ mod tests {
     use crate::{
         connector_worker::ConnectorWorker,
         connectors::{ActionKind, ConnectorCommands, ConnectorEvents, MockConnector},
+        domain::torrent::{InfoHash, Magnet, Source, TorrentInfo},
         settings::connectors::ConfiguredConnector,
-        torrent::{self, InfoHash, TorrentInfo},
     };
 
     struct Helper {
@@ -274,8 +274,8 @@ mod tests {
 
     #[tokio::test]
     async fn worker_handle_add_torrent_command() -> color_eyre::Result<()> {
-        let magnet = Faker.fake::<torrent::Magnet>();
-        let source = torrent::Source::Magnet(magnet);
+        let magnet = Faker.fake::<Magnet>();
+        let source = Source::Magnet(magnet);
 
         let command = ConnectorCommands::Add(source);
 
@@ -344,7 +344,7 @@ mod tests {
 
     #[tokio::test]
     async fn worker_handle_delete_torrent_command() -> color_eyre::Result<()> {
-        let info_hash = Faker.fake::<torrent::InfoHash>();
+        let info_hash = Faker.fake::<InfoHash>();
         let command = ConnectorCommands::Action {
             kind: ActionKind::Delete,
             info_hash,

@@ -14,33 +14,42 @@ pub mod styles;
 
 #[derive(Debug, Deserialize, Default)]
 pub struct Settings {
+    #[cfg_attr(test, serde(default))]
     pub keybindings: KeyBindings,
+    #[cfg_attr(test, serde(default))]
     pub connectors: Connectors,
+    #[cfg_attr(test, serde(default))]
     pub styles: Styles,
+    #[cfg_attr(test, serde(default))]
     pub notification_timeout_millis: u64,
+    #[cfg_attr(test, serde(default))]
     pub show_help_auto: bool,
+    #[cfg_attr(test, serde(default))]
     pub player_cmd: String,
+    #[cfg_attr(test, serde(default))]
     pub auto_insert_torrent: bool,
 }
 
 impl Settings {
-    pub fn new(config_str: Option<&str>) -> Result<Self> {
-        let user_config_file_path = get_config_dir().join("config.toml");
+    pub fn new(custom_config_path: Option<&str>) -> Result<Self> {
+        let user_config_file_path = custom_config_path
+            .map(PathBuf::from)
+            .unwrap_or(get_config_dir().join("config.toml"));
 
-        let mut config_builder = Config::builder();
+        const DEFAULT_CONFIG: &str = include_str!("../config/default.toml");
+        let settings = Config::builder()
+            .add_source(File::from_str(DEFAULT_CONFIG, FileFormat::Toml))
+            .add_source(File::from(user_config_file_path).required(false))
+            .build()?;
 
-        if let Some(config_str) = config_str {
-            config_builder =
-                config_builder.add_source(File::from_str(config_str, FileFormat::Toml));
-        } else {
-            const DEFAULT_CONFIG: &str = include_str!("../config/default.toml");
-            config_builder = config_builder
-                .add_source(File::from_str(DEFAULT_CONFIG, FileFormat::Toml))
-                .add_source(File::from(user_config_file_path).required(false));
-        }
+        Ok(settings.try_deserialize()?)
+    }
 
-        let settings = config_builder.build()?;
-
+    #[cfg(test)]
+    pub fn test_settings(config_str: impl Into<String>) -> Result<Self> {
+        let settings = Config::builder()
+            .add_source(File::from_str(&config_str.into(), FileFormat::Toml))
+            .build()?;
         Ok(settings.try_deserialize()?)
     }
 }

@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::torrent::{self};
+use crate::domain::torrent;
 
 #[derive(Debug, Deserialize)]
 #[cfg_attr(test, derive(fake::Dummy, serde::Serialize))]

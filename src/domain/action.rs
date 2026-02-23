@@ -5,8 +5,8 @@ use snafu::Snafu;
 use tokio::sync::mpsc::error::SendError;
 
 use crate::{
-    app::CurrentScreen, connectors::ConnectorCommands, settings::keybindings::KeyBindingsError,
-    torrent::source::MagnetError,
+    app::CurrentScreen, connectors::ConnectorCommands, domain::torrent::source::MagnetError,
+    settings::keybindings::KeyBindingsError,
 };
 
 #[derive(Debug, Default, Clone)]

@@ -3,7 +3,7 @@ use std::{collections::HashMap, ops::Deref};
 use ratatui::style::{Color, Modifier, Style};
 use serde::Deserialize;
 
-use crate::{mode::AddTorrentMode, torrent::State};
+use crate::domain::{modes::AddMagnetMode, torrent::State};
 
 #[derive(Debug, Default, Deserialize, Hash, Eq, PartialEq)]
 pub enum StyleMode {
@@ -14,7 +14,7 @@ pub enum StyleMode {
     Table,
     Notification,
     WhichKey,
-    AddTorrent(AddTorrentMode),
+    AddTorrent(AddMagnetMode),
     #[default]
     Default,
 }
@@ -108,10 +108,10 @@ impl<'de> Deserialize<'de> for Styles {
 
         if let Some(add) = helper.add_torrent {
             if let Some(bindings) = add.input {
-                parsed_map.insert(StyleMode::AddTorrent(AddTorrentMode::Input), bindings);
+                parsed_map.insert(StyleMode::AddTorrent(AddMagnetMode::Input), bindings);
             }
             if let Some(bindings) = add.connectors {
-                parsed_map.insert(StyleMode::AddTorrent(AddTorrentMode::Connectors), bindings);
+                parsed_map.insert(StyleMode::AddTorrent(AddMagnetMode::Connectors), bindings);
             }
         }
 

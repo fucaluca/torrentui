@@ -7,10 +7,12 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    action::Action,
     connector_worker::ConnectorWorker,
     connectors::{ConnectorCommands, ConnectorEvents},
-    mode::{AddTorrentMode, KeyMode},
+    domain::{
+        action::Action,
+        modes::{AddMagnetMode, KeyMode},
+    },
     settings::Settings,
     terminal::{self, Event, Tui},
     ui::{self, Drawable, notifications::Notification},
@@ -21,7 +23,7 @@ use crate::{
 pub enum CurrentScreen {
     #[default]
     TorrentList,
-    AddTorrent(AddTorrentMode),
+    AddTorrent(AddMagnetMode),
 }
 
 pub struct App {
@@ -173,7 +175,7 @@ impl App {
                     Action::Quit => self.should_quit = true,
                     Action::AddTorrent => {
                         self.components.add_torrent.update(&self.settings);
-                        self.switch_screen(CurrentScreen::AddTorrent(AddTorrentMode::Input))
+                        self.switch_screen(CurrentScreen::AddTorrent(AddMagnetMode::Input))
                     }
                     Action::Help(mode) => self.show_help_on_current_screen(Some(&mode))?,
                     Action::Next => {

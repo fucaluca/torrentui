@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::torrent::InfoHash;
+use crate::domain::torrent::InfoHash;
 
 #[derive(Debug, Deserialize)]
 #[cfg_attr(test, derive(serde::Serialize, PartialEq, Eq, Clone))]

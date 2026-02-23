@@ -1,6 +1,6 @@
 use ratatui::{buffer::Buffer, layout::Rect};
 
-pub mod add_torrent;
+pub mod add_magnet;
 pub mod notifications;
 pub mod torrent_list;
 pub mod which_key;
@@ -10,14 +10,14 @@ pub use torrent_list::TorrentList;
 
 use crate::{
     settings::Settings,
-    ui::{add_torrent::AddTorrent, which_key::WhichKey},
+    ui::{add_magnet::AddMagnet, which_key::WhichKey},
 };
 
 pub struct Components {
     pub torrent_list: TorrentList,
     pub notifications: Notifications,
     pub which_key: WhichKey,
-    pub add_torrent: AddTorrent,
+    pub add_torrent: AddMagnet,
 }
 
 impl Components {
@@ -26,7 +26,7 @@ impl Components {
             torrent_list: TorrentList::new(),
             notifications: Notifications::new(),
             which_key: WhichKey::new(),
-            add_torrent: AddTorrent::new(settings),
+            add_torrent: AddMagnet::new(settings),
         }
     }
 }

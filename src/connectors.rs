@@ -5,7 +5,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use snafu::Snafu;
 
-use crate::torrent::{self, InfoHash, Source, TorrentInfo};
+use crate::domain::torrent::{InfoHash, Source, TorrentInfo};
 
 #[derive(Debug)]
 pub enum ConnectorEvents {
@@ -21,18 +21,14 @@ pub enum ConnectorEvents {
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait Connector: std::fmt::Debug + Sync + Send {
-    async fn get_torrent_list(&self) -> Result<Vec<torrent::TorrentInfo>, ConnectorError>;
-    async fn add_torrent(&self, torrent_source: torrent::Source) -> Result<(), ConnectorError>;
-    async fn forget_torrent(&self, info_hash: torrent::InfoHash) -> Result<(), ConnectorError>;
-    async fn delete_torrent(&self, info_hash: torrent::InfoHash) -> Result<(), ConnectorError>;
-    async fn pause_torrent(&self, info_hash: torrent::InfoHash) -> Result<(), ConnectorError>;
-    async fn start_torrent(&self, info_hash: torrent::InfoHash) -> Result<(), ConnectorError>;
+    async fn get_torrent_list(&self) -> Result<Vec<TorrentInfo>, ConnectorError>;
+    async fn add_torrent(&self, torrent_source: Source) -> Result<(), ConnectorError>;
+    async fn forget_torrent(&self, info_hash: InfoHash) -> Result<(), ConnectorError>;
+    async fn delete_torrent(&self, info_hash: InfoHash) -> Result<(), ConnectorError>;
+    async fn pause_torrent(&self, info_hash: InfoHash) -> Result<(), ConnectorError>;
+    async fn start_torrent(&self, info_hash: InfoHash) -> Result<(), ConnectorError>;
     fn name(&self) -> Arc<String>;
     fn selected(&self) -> &bool;
-    #[expect(dead_code)]
-    fn selected_mut(&mut self) -> &mut bool;
-    #[expect(dead_code)]
-    fn toggle_selected(&mut self);
     fn url(&self) -> String;
 }
 

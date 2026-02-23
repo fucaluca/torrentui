@@ -6,10 +6,11 @@ use reqwest::Client;
 use serde::{Deserialize, de::DeserializeOwned};
 use snafu::{ResultExt, Snafu};
 
+use crate::domain::torrent::{InfoHash, Source, TorrentInfo};
+
 use super::{
     Api, ApiError, ParseResponseSnafu, ReadTorrentSnafu, RequestSnafu, endpoints::Endpoints,
 };
-use crate::torrent::{InfoHash, Source, TorrentInfo};
 
 pub mod dto;
 
@@ -139,7 +140,7 @@ impl RqbitHttpApiV8 {
 
     async fn get_torrent_info(
         &self,
-        info_hash: &InfoHash,
+        info_hash: &crate::domain::torrent::InfoHash,
     ) -> Result<dto::TorrentInfoResponse, ApiError> {
         self.send_get_request::<dto::TorrentInfoResponse>(Endpoints::get_torrent_info(info_hash))
             .await
@@ -240,7 +241,7 @@ impl Api for RqbitHttpApiV8 {
 mod test {
     use std::fs;
 
-    use crate::torrent::source::Magnet;
+    use crate::domain::torrent::source::Magnet;
     use assert_matches::assert_matches;
     use color_eyre::eyre::OptionExt;
     use fake::{Fake, Faker};

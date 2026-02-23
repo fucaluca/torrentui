@@ -8,7 +8,7 @@ use crate::{
         AddTorrentFailedSnafu, Connector, ConnectorError, ConnectorName, DeleteTorrentSnafu,
         ForgetTorrentSnafu, GetListFailedSnafu, PauseTorrentSnafu, StartTorrentSnafu,
     },
-    torrent::{InfoHash, Source, TorrentInfo},
+    domain::torrent::{InfoHash, Source, TorrentInfo},
 };
 
 pub mod api;
@@ -60,12 +60,6 @@ impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
     }
     fn selected(&self) -> &bool {
         &self.selected
-    }
-    fn selected_mut(&mut self) -> &mut bool {
-        &mut self.selected
-    }
-    fn toggle_selected(&mut self) {
-        self.selected = !self.selected;
     }
 
     async fn get_torrent_list(&self) -> Result<Vec<TorrentInfo>, ConnectorError> {
@@ -211,7 +205,7 @@ mod test {
     };
     use crate::{
         connectors::{Connector, ConnectorName},
-        torrent::{InfoHash, Source, TorrentInfo, source::Magnet},
+        domain::torrent::{InfoHash, Magnet, Source, TorrentInfo},
     };
     use assert_matches::assert_matches;
     use color_eyre::eyre::OptionExt;

@@ -4,9 +4,9 @@ use indexmap::IndexMap;
 use serde::Deserialize;
 use snafu::Snafu;
 
-use crate::{
+use crate::domain::{
     action::Action,
-    mode::{AddTorrentMode, KeyMode},
+    modes::{AddMagnetMode, KeyMode},
 };
 
 #[derive(Debug, Default)]
@@ -116,10 +116,10 @@ impl<'de> Deserialize<'de> for KeyBindings {
 
         if let Some(add) = helper.add_torrent {
             if let Some(bindings) = add.input {
-                parsed_map.insert(KeyMode::AddTorrent(AddTorrentMode::Input), bindings);
+                parsed_map.insert(KeyMode::AddTorrent(AddMagnetMode::Input), bindings);
             }
             if let Some(bindings) = add.connectors {
-                parsed_map.insert(KeyMode::AddTorrent(AddTorrentMode::Connectors), bindings);
+                parsed_map.insert(KeyMode::AddTorrent(AddMagnetMode::Connectors), bindings);
             }
         }
 
@@ -294,7 +294,7 @@ mod tests {
             [keybindings.TorrentList]
             "<q>" = "Quit"
         "#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
@@ -314,7 +314,7 @@ mod tests {
             [keybindings.TorrentList]
             "<q>" = { action = "Quit", description = "Quit" }
         "#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
@@ -336,7 +336,7 @@ mod tests {
             [keybindings.TorrentList]
             "<ctrl-q>" = "Quit"
         "#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::CONTROL);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
@@ -358,7 +358,7 @@ mod tests {
             [keybindings.TorrentList]
             "<alt-q>" = "Quit"
         "#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::ALT);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
@@ -380,7 +380,7 @@ mod tests {
             [keybindings.TorrentList]
             "<shift-q>" = "Quit"
         "#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
         let key_event = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::SHIFT);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
@@ -402,7 +402,7 @@ mod tests {
           [keybindings.TorrentList]
           "<ctrl-a><alt-b>" = "AddTorrent"
         "#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
         let key_event1 = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL);
         let key_event2 = KeyEvent::new(KeyCode::Char('b'), KeyModifiers::ALT);
 
@@ -436,7 +436,7 @@ mod tests {
             "<ctrl-a>" = { description = "Add" }
             "<ctrl-a><t>" = { action = "AddTorrent", description = "Torrent" }
         "#;
-        let settings = Settings::new(config_str.into())?;
+        let settings = Settings::test_settings(config_str)?;
         let key_event1 = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL);
         let key_event2 = KeyEvent::new(KeyCode::Char('t'), KeyModifiers::NONE);
 

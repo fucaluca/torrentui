@@ -13,20 +13,21 @@ use snafu::ResultExt;
 use tokio::sync::mpsc;
 
 use crate::{
-    action::{Action, ClipboardInitSnafu, CreateMagnetSnafu, GetFromClipboardSnafu, SendSnafu},
+    app::CurrentScreen,
     connectors::{ConnectorCommands, ConnectorName},
-    settings::Settings,
-    torrent::{Magnet, Source},
+    domain::{
+        action::{
+            Action, ActionError, ClipboardInitSnafu, CreateMagnetSnafu, GetActionFailedSnafu,
+            GetFromClipboardSnafu, SendSnafu,
+        },
+        modes::{AddMagnetMode, KeyMode},
+        torrent::{Magnet, Source},
+    },
+    settings::{Settings, styles::StyleMode},
     ui::{
         Drawable,
         assets::{self, Symbols},
     },
-};
-use crate::{
-    action::{ActionError, GetActionFailedSnafu},
-    app::CurrentScreen,
-    mode::{AddTorrentMode, KeyMode},
-    settings::styles::StyleMode,
 };
 
 struct Connector {
@@ -41,15 +42,15 @@ impl Connector {
 }
 
 #[derive(Default)]
-pub struct AddTorrent {
+pub struct AddMagnet {
     table_state: TableState,
     text_area: String,
     torrent_source: Option<Source>,
     connectors: Vec<Connector>,
-    mode: AddTorrentMode,
+    mode: AddMagnetMode,
 }
 
-impl Drawable for AddTorrent {
+impl Drawable for AddMagnet {
     fn draw(
         &mut self,
         buf: &mut ratatui::prelude::Buffer,
@@ -106,7 +107,7 @@ impl Drawable for AddTorrent {
     }
 }
 
-impl AddTorrent {
+impl AddMagnet {
     pub fn new(settings: &Settings) -> Self {
         let connectors = settings
             .connectors
@@ -128,7 +129,7 @@ impl AddTorrent {
         settings: &mut Settings,
         connectors: &mut HashMap<String, mpsc::Sender<ConnectorCommands>>,
     ) -> Result<Option<Action>, ActionError> {
-        use AddTorrentMode::*;
+        use AddMagnetMode::*;
         match self.mode {
             Input => self.edit_mode_action(key_event, settings, connectors).await,
             Connectors => {
@@ -146,7 +147,7 @@ impl AddTorrent {
     ) -> Result<Option<Action>, ActionError> {
         let action = settings
             .keybindings
-            .action(KeyMode::AddTorrent(AddTorrentMode::Input), key_event)
+            .action(KeyMode::AddTorrent(AddMagnetMode::Input), key_event)
             .context(GetActionFailedSnafu)?;
 
         if action.is_none() {
@@ -175,7 +176,7 @@ impl AddTorrent {
                     self.send_new_torrent(connectors).await?;
                     Ok(Some(Action::DefaultScreen))
                 } else {
-                    self.mode = AddTorrentMode::Connectors;
+                    self.mode = AddMagnetMode::Connectors;
                     Ok(None)
                 }
             }
@@ -183,7 +184,7 @@ impl AddTorrent {
                 self.mode.toggle();
                 Ok(None)
             }
-            Help(_) => Ok(Some(Help(CurrentScreen::AddTorrent(AddTorrentMode::Input)))),
+            Help(_) => Ok(Some(Help(CurrentScreen::AddTorrent(AddMagnetMode::Input)))),
             action => Ok(Some(action)),
         }
     }
@@ -196,7 +197,7 @@ impl AddTorrent {
     ) -> Result<Option<Action>, ActionError> {
         let action = settings
             .keybindings
-            .action(KeyMode::AddTorrent(AddTorrentMode::Connectors), key_event)
+            .action(KeyMode::AddTorrent(AddMagnetMode::Connectors), key_event)
             .context(GetActionFailedSnafu)?;
         if action.is_none() {
             return Ok(None);
@@ -224,7 +225,7 @@ impl AddTorrent {
                 Ok(None)
             }
             Help(_) => Ok(Some(Help(CurrentScreen::AddTorrent(
-                AddTorrentMode::Connectors,
+                AddMagnetMode::Connectors,
             )))),
             action => Ok(Some(action)),
         }
@@ -352,18 +353,5 @@ impl AddTorrent {
                 Constraint::Min(0),
             ])
             .split(popup_layout[1])[1]
-    }
-
-    #[expect(unused)]
-    fn split_area(&self, inner_area: Rect) -> (Rect, Rect, Rect) {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(1),
-                Constraint::Length(1),
-                Constraint::Min(2),
-            ])
-            .split(inner_area);
-        (chunks[0], chunks[1], chunks[2])
     }
 }

@@ -1,25 +1,32 @@
-use std::collections::{BTreeMap, HashMap};
-use std::process::Stdio;
-use std::sync::Arc;
+use std::{
+    collections::{BTreeMap, HashMap},
+    process::Stdio,
+    sync::Arc,
+};
 
 use crossterm::event::KeyEvent;
-use ratatui::layout::Alignment;
-use ratatui::text::Line;
-use ratatui::widgets::{Block, BorderType, Borders, Row, Table, TableState};
-use ratatui::{buffer::Buffer, layout::Rect, widgets::StatefulWidget};
+use ratatui::{
+    buffer::Buffer,
+    layout::{Alignment, Rect},
+    text::Line,
+    widgets::{Block, BorderType, Borders, Row, StatefulWidget, Table, TableState},
+};
 use snafu::ResultExt;
+
 use tokio::sync::mpsc;
 
-use crate::action::{Action, ActionError, CommandSendFailedSnafu, GetActionFailedSnafu, PlaySnafu};
-use crate::connectors::{ActionKind, ConnectorCommands, ConnectorName};
-use crate::mode::KeyMode;
-use crate::settings::Settings;
-use crate::settings::styles::StyleMode;
-use crate::torrent::{State, TorrentInfo};
-use crate::ui::Drawable;
-use crate::ui::components::torrent_list::cell::Cell;
-use crate::ui::components::torrent_list::column::Column;
-use crate::ui::torrent_list::table_layout::TableLayout;
+use crate::{
+    connectors::{ActionKind, ConnectorCommands, ConnectorName},
+    domain::{
+        action::{Action, ActionError, CommandSendFailedSnafu, GetActionFailedSnafu, PlaySnafu},
+        modes::KeyMode,
+        torrent::{State, TorrentInfo},
+    },
+    settings::{Settings, styles::StyleMode},
+    ui::{
+        Drawable, components::torrent_list::column::Column, torrent_list::table_layout::TableLayout,
+    },
+};
 
 mod cell;
 mod column;
@@ -85,43 +92,41 @@ impl TorrentList {
         settings: &Settings,
         width: u16,
     ) -> Row<'static> {
-        let cell = Cell::new();
-
         Row::new(vec![
             Column::builder()
-                .top(cell.status_with_name(info, settings))
-                .bottom(cell.connector_with_folder(connector, info, settings))
-                .divider(cell.info_divider(info, width, settings))
+                .top(cell::status_with_name(info, settings))
+                .bottom(cell::connector_with_folder(connector, info, settings))
+                .divider(cell::info_divider(info, width, settings))
                 .alignment(Alignment::Left),
             Column::builder()
-                .top(cell.peers_icon(info, settings))
-                .bottom(cell.peers(info, settings))
-                .divider(cell.peers_divider(info, settings))
+                .top(cell::peers_icon(info, settings))
+                .bottom(cell::peers(info, settings))
+                .divider(cell::peers_divider(info, settings))
                 .alignment(Alignment::Center),
             Column::builder()
-                .top(cell.total_size(info, settings))
-                .bottom(cell.time_remaining(info, settings))
-                .divider(cell.size_with_time_divider(info, settings))
+                .top(cell::total_size(info, settings))
+                .bottom(cell::time_remaining(info, settings))
+                .divider(cell::size_with_time_divider(info, settings))
                 .alignment(Alignment::Center),
             Column::builder()
-                .top(cell.uploading_icon(info, settings))
-                .bottom(cell.downloading_icon(info, settings))
-                .divider(cell.ul_dl_icons_divider(info, settings))
+                .top(cell::uploading_icon(info, settings))
+                .bottom(cell::downloading_icon(info, settings))
+                .divider(cell::ul_dl_icons_divider(info, settings))
                 .alignment(Alignment::Center),
             Column::builder()
-                .top(cell.upload_speed(info, settings))
-                .bottom(cell.download_speed(info, settings))
-                .divider(cell.speed_divider(info, settings))
+                .top(cell::upload_speed(info, settings))
+                .bottom(cell::download_speed(info, settings))
+                .divider(cell::speed_divider(info, settings))
                 .alignment(Alignment::Right),
             Column::builder()
-                .top(cell.uploaded_size(info, settings))
-                .bottom(cell.downloaded_size(info, settings))
-                .divider(cell.progress_divider(info, settings))
+                .top(cell::uploaded_size(info, settings))
+                .bottom(cell::downloaded_size(info, settings))
+                .divider(cell::progress_divider(info, settings))
                 .alignment(Alignment::Right),
             Column::builder()
-                .top(cell.rate(info, settings))
-                .bottom(cell.progress_percent(info, settings))
-                .divider(cell.rate_divider(info, settings))
+                .top(cell::rate(info, settings))
+                .bottom(cell::progress_percent(info, settings))
+                .divider(cell::rate_divider(info, settings))
                 .alignment(Alignment::Right),
         ])
         .height(3)

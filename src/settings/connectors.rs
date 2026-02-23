@@ -84,7 +84,9 @@ impl<'de> Deserialize<'de> for Connectors {
             Rqbit {
                 url: String,
                 api_version: ApiVersion,
+                #[cfg_attr(test, serde(default))]
                 update_interval_secs: u64,
+                #[cfg_attr(test, serde(default))]
                 selected_by_default: bool,
             },
             Transmission,
@@ -157,7 +159,7 @@ mod tests {
             update_interval_secs = 5
         "#
         );
-        let settings = Settings::new(config_str.as_str().into())?;
+        let settings = Settings::test_settings(config_str)?;
 
         assert_eq!(settings.connectors.contains_key(&connector_name), true);
         let connector = settings

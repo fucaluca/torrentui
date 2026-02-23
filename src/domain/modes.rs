@@ -3,13 +3,13 @@ use serde::Deserialize;
 use crate::app::CurrentScreen;
 
 #[derive(Debug, Default, Deserialize, Eq, PartialEq, Hash, Copy, Clone)]
-pub enum AddTorrentMode {
+pub enum AddMagnetMode {
     #[default]
     Input,
     Connectors,
 }
 
-impl AddTorrentMode {
+impl AddMagnetMode {
     pub fn toggle(&mut self) {
         *self = match self {
             Self::Connectors => Self::Input,
@@ -22,7 +22,7 @@ impl AddTorrentMode {
 pub enum KeyMode {
     #[default]
     TorrentList,
-    AddTorrent(AddTorrentMode),
+    AddTorrent(AddMagnetMode),
 }
 
 use std::str::FromStr;
