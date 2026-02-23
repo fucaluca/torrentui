@@ -3,64 +3,44 @@ use std::path::PathBuf;
 use directories::ProjectDirs;
 
 use color_eyre::eyre::Result;
-use config::{Config, File};
+use config::{Config, File, FileFormat};
 use serde::Deserialize;
 
 use crate::settings::{connectors::Connectors, keybindings::KeyBindings, styles::Styles};
 
 pub mod connectors;
-mod defaults;
 pub mod keybindings;
 pub mod styles;
 
 #[derive(Debug, Deserialize, Default)]
 pub struct Settings {
-    #[serde(default)]
     pub keybindings: KeyBindings,
-    #[serde(default)]
     pub connectors: Connectors,
-    #[serde(default)]
     pub styles: Styles,
-    #[serde(default = "defaults::notification_timeout_millis")]
     pub notification_timeout_millis: u64,
-    #[serde(default = "defaults::show_help_auto")]
     pub show_help_auto: bool,
-    #[serde(default = "defaults::player_cmd")]
     pub player_cmd: String,
-    #[serde(default = "defaults::auto_insert_torrent")]
     pub auto_insert_torrent: bool,
 }
 
-#[derive(Debug)]
-pub enum ConfigSource {
-    File(PathBuf),
-    #[cfg(test)]
-    String(String),
-}
-
-impl ConfigSource {
-    fn get(&self) -> Box<dyn config::Source> {
-        match self {
-            Self::File(path) => Box::new(File::from(path.clone())),
-            #[cfg(test)]
-            Self::String(s) => Box::new(File::from_str(s, config::FileFormat::Toml)),
-        }
-    }
-}
-
-impl config::Source for ConfigSource {
-    fn clone_into_box(&self) -> Box<dyn config::Source + Send + Sync> {
-        self.get().clone_into_box()
-    }
-
-    fn collect(&self) -> Result<config::Map<String, config::Value>, config::ConfigError> {
-        self.get().collect()
-    }
-}
-
 impl Settings {
-    pub fn new(config_source: ConfigSource) -> Result<Self> {
-        let settings = Config::builder().add_source(config_source).build()?;
+    pub fn new(config_str: Option<&str>) -> Result<Self> {
+        let user_config_file_path = get_config_dir().join("config.toml");
+
+        let mut config_builder = Config::builder();
+
+        if let Some(config_str) = config_str {
+            config_builder =
+                config_builder.add_source(File::from_str(config_str, FileFormat::Toml));
+        } else {
+            const DEFAULT_CONFIG: &str = include_str!("../config/default.toml");
+            config_builder = config_builder
+                .add_source(File::from_str(DEFAULT_CONFIG, FileFormat::Toml))
+                .add_source(File::from(user_config_file_path).required(false));
+        }
+
+        let settings = config_builder.build()?;
+
         Ok(settings.try_deserialize()?)
     }
 }

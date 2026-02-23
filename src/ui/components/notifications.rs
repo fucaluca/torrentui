@@ -126,7 +126,7 @@ mod tests {
 
     use crate::{
         connectors::ConnectorEvents,
-        settings::{ConfigSource, Settings},
+        settings::Settings,
         ui::{Notifications, notifications::Notification},
     };
 
@@ -164,13 +164,12 @@ mod tests {
 
     #[test]
     fn notify_add_ok() -> color_eyre::Result<()> {
-        let config_toml = r#"
+        let config_str = r#"
             [styles.Notification]
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.into())?;
         let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(ConnectorEvents::AddOk);
@@ -189,13 +188,12 @@ mod tests {
     }
     #[test]
     fn notify_start_ok() -> color_eyre::Result<()> {
-        let config_toml = r#"
+        let config_str = r#"
             [styles.Notification]
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.into())?;
         let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(ConnectorEvents::StartOk);
@@ -216,13 +214,12 @@ mod tests {
     }
     #[test]
     fn notify_pause_ok() -> color_eyre::Result<()> {
-        let config_toml = r#"
+        let config_str = r#"
             [styles.Notification]
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.into())?;
         let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(ConnectorEvents::PauseOk);
@@ -243,13 +240,12 @@ mod tests {
     }
     #[test]
     fn notify_forget_ok() -> color_eyre::Result<()> {
-        let config_toml = r#"
+        let config_str = r#"
             [styles.Notification]
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.into())?;
         let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(ConnectorEvents::ForgetOk);
@@ -270,13 +266,12 @@ mod tests {
     }
     #[test]
     fn notify_delete_ok() -> color_eyre::Result<()> {
-        let config_toml = r#"
+        let config_str = r#"
             [styles.Notification]
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.into())?;
         let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(ConnectorEvents::DeleteOk);
@@ -297,13 +292,12 @@ mod tests {
     }
     #[test]
     fn notify_error() -> color_eyre::Result<()> {
-        let config_toml = r#"
+        let config_str = r#"
             [styles.Notification]
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.into())?;
         let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(Notification::Error(String::from("Some error")));
@@ -324,14 +318,13 @@ mod tests {
     }
     #[test]
     fn remove_notification() -> color_eyre::Result<()> {
-        let config_toml = r#"
+        let config_str = r#"
             notification_timeout_millis = 0
             [styles.Notification]
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.into())?;
         let mut helper = TestHelper::new(80, 1)?;
 
         helper.notify(Notification::Error(String::from("Some error")));

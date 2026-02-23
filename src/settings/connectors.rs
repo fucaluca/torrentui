@@ -18,8 +18,6 @@ use crate::connectors::{
     },
 };
 
-use super::defaults;
-
 type ConnectorBox = Box<dyn Connector + Send + Sync + 'static>;
 
 #[derive(Debug)]
@@ -86,9 +84,7 @@ impl<'de> Deserialize<'de> for Connectors {
             Rqbit {
                 url: String,
                 api_version: ApiVersion,
-                #[serde(default = "defaults::update_interval_secs")]
                 update_interval_secs: u64,
-                #[serde(default = "defaults::connector_selected")]
                 selected_by_default: bool,
             },
             Transmission,
@@ -145,14 +141,14 @@ impl<'de> Deserialize<'de> for Connectors {
 mod tests {
     use std::{sync::Arc, time::Duration};
 
-    use crate::settings::{ConfigSource, Settings};
+    use crate::settings::Settings;
 
     use pretty_assertions::assert_eq;
 
     #[test]
     fn create_rqbit_connector() -> color_eyre::Result<()> {
         let connector_name = Arc::new("localhost".into());
-        let config_toml = format!(
+        let config_str = format!(
             r#"
             [connectors.{connector_name}]
             kind = "rqbit"
@@ -161,8 +157,7 @@ mod tests {
             update_interval_secs = 5
         "#
         );
-        let config_source = ConfigSource::String(config_toml);
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.as_str().into())?;
 
         assert_eq!(settings.connectors.contains_key(&connector_name), true);
         let connector = settings

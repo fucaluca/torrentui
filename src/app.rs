@@ -11,7 +11,7 @@ use crate::{
     connector_worker::ConnectorWorker,
     connectors::{ConnectorCommands, ConnectorEvents},
     mode::{AddTorrentMode, KeyMode},
-    settings::{ConfigSource, Settings, get_config_dir},
+    settings::Settings,
     terminal::{self, Event, Tui},
     ui::{self, Drawable, notifications::Notification},
 };
@@ -34,9 +34,7 @@ pub struct App {
 }
 impl App {
     pub fn new() -> Result<Self> {
-        let config_file_path = get_config_dir().join("config.toml");
-        let config_source = ConfigSource::File(config_file_path);
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(None)?;
         let mode = CurrentScreen::default();
 
         let tui = Tui::new()?;

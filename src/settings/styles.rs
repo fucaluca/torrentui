@@ -80,7 +80,6 @@ impl<'de> Deserialize<'de> for Styles {
         D: serde::Deserializer<'de>,
     {
         #[derive(Debug, Deserialize, Default)]
-        #[serde(default)]
         struct Helper {
             #[serde(flatten)]
             flat: HashMap<String, HashMap<String, String>>,
@@ -90,7 +89,7 @@ impl<'de> Deserialize<'de> for Styles {
         }
 
         #[derive(Debug, Deserialize, Default)]
-        #[serde(default, rename_all = "PascalCase")]
+        #[serde(rename_all = "PascalCase")]
         struct AddTorrentGroup {
             input: Option<HashMap<String, String>>,
             connectors: Option<HashMap<String, String>>,

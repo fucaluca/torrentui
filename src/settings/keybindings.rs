@@ -88,7 +88,6 @@ impl<'de> Deserialize<'de> for KeyBindings {
         D: serde::Deserializer<'de>,
     {
         #[derive(Debug, Deserialize, Default)]
-        #[serde(default)]
         struct Helper {
             #[serde(flatten)]
             flat: IndexMap<String, IndexMap<String, KeyBindingValue>>,
@@ -98,7 +97,7 @@ impl<'de> Deserialize<'de> for KeyBindings {
         }
 
         #[derive(Debug, Deserialize, Default)]
-        #[serde(default, rename_all = "PascalCase")]
+        #[serde(rename_all = "PascalCase")]
         struct AddTorrentGroup {
             input: Option<IndexMap<String, KeyBindingValue>>,
             connectors: Option<IndexMap<String, KeyBindingValue>>,
@@ -133,20 +132,6 @@ impl<'de> Deserialize<'de> for KeyBindings {
                     let key_events = parse_key_sequence(&raw).map_err(serde::de::Error::custom)?;
                     add_binding_to_tree(&mut root_bindings, key_events, value);
                 }
-
-                // TODO: add to default config and remove it
-                let mut esc_node = KeyBindingsNode::from(KeyBindingValue::Simple(Action::Escape));
-                esc_node.display = "esc".into();
-                root_bindings
-                    .next
-                    .insert(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE), esc_node);
-
-                let mut quit_node = KeyBindingsNode::from(KeyBindingValue::Simple(Action::Quit));
-                quit_node.display = "Q".into();
-                root_bindings.next.insert(
-                    KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::SHIFT),
-                    quit_node,
-                );
 
                 Ok((mode, root_bindings))
             })
@@ -300,17 +285,16 @@ fn parse_key_code_with_modifiers(
 #[cfg(test)]
 mod tests {
     use super::{Action, KeyBindingsNode, KeyCode, KeyEvent, KeyMode, KeyModifiers};
-    use crate::settings::{ConfigSource, Settings};
+    use crate::settings::Settings;
     use pretty_assertions::assert_eq;
 
     #[test]
     fn parse_single_key_without_description() -> color_eyre::Result<()> {
-        let config_toml = r#"
+        let config_str = r#"
             [keybindings.TorrentList]
             "<q>" = "Quit"
         "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.into())?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
@@ -326,12 +310,11 @@ mod tests {
 
     #[test]
     fn parse_single_key_with_description() -> color_eyre::Result<()> {
-        let config_toml = r#"
+        let config_str = r#"
             [keybindings.TorrentList]
             "<q>" = { action = "Quit", description = "Quit" }
         "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.into())?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
@@ -349,12 +332,11 @@ mod tests {
 
     #[test]
     fn parse_keys_with_ctrl_modifier() -> color_eyre::Result<()> {
-        let config_toml = r#"
+        let config_str = r#"
             [keybindings.TorrentList]
             "<ctrl-q>" = "Quit"
         "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.into())?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::CONTROL);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
@@ -372,12 +354,11 @@ mod tests {
 
     #[test]
     fn parse_keys_with_alt_modifier() -> color_eyre::Result<()> {
-        let config_toml = r#"
+        let config_str = r#"
             [keybindings.TorrentList]
             "<alt-q>" = "Quit"
         "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.into())?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::ALT);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
@@ -395,12 +376,11 @@ mod tests {
 
     #[test]
     fn parse_keys_with_shift_modifier() -> color_eyre::Result<()> {
-        let config_toml = r#"
+        let config_str = r#"
             [keybindings.TorrentList]
             "<shift-q>" = "Quit"
         "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.into())?;
         let key_event = KeyEvent::new(KeyCode::Char('Q'), KeyModifiers::SHIFT);
         let keybindings: &KeyBindingsNode = settings
             .keybindings
@@ -418,12 +398,11 @@ mod tests {
 
     #[test]
     fn make_keybindings_tree() -> color_eyre::Result<()> {
-        let config_toml = r#"
+        let config_str = r#"
           [keybindings.TorrentList]
           "<ctrl-a><alt-b>" = "AddTorrent"
         "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.into())?;
         let key_event1 = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL);
         let key_event2 = KeyEvent::new(KeyCode::Char('b'), KeyModifiers::ALT);
 
@@ -452,13 +431,12 @@ mod tests {
 
     #[test]
     fn keybindings_with_common_prefix_share_node() -> color_eyre::Result<()> {
-        let config_toml = r#"
+        let config_str = r#"
             [keybindings.TorrentList]
             "<ctrl-a>" = { description = "Add" }
             "<ctrl-a><t>" = { action = "AddTorrent", description = "Torrent" }
         "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.into())?;
         let key_event1 = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL);
         let key_event2 = KeyEvent::new(KeyCode::Char('t'), KeyModifiers::NONE);
 

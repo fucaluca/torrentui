@@ -219,7 +219,7 @@ mod tests {
 
     use crate::{
         action::Action,
-        settings::{ConfigSource, Settings, keybindings::KeyBindingsNode},
+        settings::{Settings, keybindings::KeyBindingsNode},
         ui::{Drawable, assets, which_key::WhichKey},
     };
 
@@ -227,14 +227,13 @@ mod tests {
 
     #[test]
     fn styles() -> color_eyre::Result<()> {
-        let config_toml = r#"
+        let config_str = r#"
             [styles.WhichKey]
             key = "green on rgb:0,0,0"
             description = "blue on rgb:0,0,0"
             default = "yellow on rgb:0,0,0"
         "#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let settings = Settings::new(config_str.into())?;
 
         let mut which_key = WhichKey::new();
 
@@ -303,9 +302,8 @@ mod tests {
 
     #[test]
     fn draw_nested() -> color_eyre::Result<()> {
-        let config_toml = r#""#;
-        let config_source = ConfigSource::String(config_toml.into());
-        let settings = Settings::new(config_source)?;
+        let config_str = r#""#;
+        let settings = Settings::new(config_str.into())?;
 
         let mut which_key = WhichKey::new();
 
