@@ -3,6 +3,7 @@ use color_eyre::Result;
 use crate::app::App;
 
 mod app;
+mod args;
 mod connector_worker;
 mod connectors;
 mod domain;

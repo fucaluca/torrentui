@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use clap::Parser;
 use color_eyre::eyre::Result;
 use crossterm::event::KeyEvent;
 use ratatui::layout::{Constraint, Layout};
@@ -7,6 +8,7 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
+    args::Args,
     connector_worker::ConnectorWorker,
     connectors::{ConnectorCommands, ConnectorEvents},
     domain::{
@@ -36,7 +38,8 @@ pub struct App {
 }
 impl App {
     pub fn new() -> Result<Self> {
-        let settings = Settings::new(None)?;
+        let config_file = Args::parse().config_file();
+        let settings = Settings::new(config_file.as_deref())?;
         let mode = CurrentScreen::default();
 
         let tui = Tui::new()?;
