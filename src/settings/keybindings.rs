@@ -154,15 +154,35 @@ pub fn add_binding_to_tree(
     let mut current = root;
     let mut iter = key_events.into_iter().peekable();
 
-    while let Some(key_event) = iter.next() {
+    while let Some(key) = iter.next() {
         let is_last = iter.peek().is_none();
+        let (key_event, display_text) = key;
         if is_last {
+            debug!(
+                "Last key in sequence, display key: {}, insert next node into trie",
+                display_text
+            );
             let mut node = KeyBindingsNode::from(value.clone());
-            node.display = key_event.1;
-            current.next.insert(key_event.0, node);
+            node.display = display_text;
+            if let Some(next) = current.next.get_mut(&key_event) {
+                debug!("Next node already exists, updating description");
+                next.description = node.description;
+                next.action = node.action;
+                next.display = node.display;
+            } else {
+                debug!("Next node empty, inserting new node");
+                current.next.insert(key_event, node);
+            }
         } else {
-            let node = current.next.entry(key_event.0).or_default();
-            node.display = key_event.1;
+            debug!("Getting next node");
+            let node = current.next.entry(key_event).or_insert_with(|| {
+                debug!(
+                    "Key display '{}' not found in map, insert and return default",
+                    display_text
+                );
+                KeyBindingsNode::default()
+            });
+            node.display = display_text;
             current = node;
         }
     }
