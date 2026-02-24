@@ -6,6 +6,7 @@ use crossterm::event::KeyEvent;
 use ratatui::layout::{Constraint, Layout};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
+use tracing::debug;
 
 use crate::{
     args::Args,
@@ -153,6 +154,7 @@ impl App {
     }
 
     async fn handle_key_events(&mut self, key_event: KeyEvent) -> Result<()> {
+        debug!("{key_event:?}");
         self.components.notifications.on_user_interaction();
         let result = match self.current_screen {
             CurrentScreen::TorrentList => {

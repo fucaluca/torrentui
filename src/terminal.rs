@@ -12,6 +12,7 @@ use ratatui::{
 };
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio_util::sync::CancellationToken;
+use tracing::info;
 
 #[derive(Clone)]
 pub enum Event {
@@ -81,6 +82,11 @@ impl Tui {
         self.cancellation_token.cancel();
         crossterm::execute!(stdout(), LeaveAlternateScreen, cursor::Show)?;
         crossterm::terminal::disable_raw_mode()?;
+        info!(
+            "{} v{} shutdown",
+            env!("CARGO_PKG_NAME"),
+            env!("CARGO_PKG_VERSION")
+        );
         Ok(())
     }
 }

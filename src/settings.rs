@@ -54,11 +54,19 @@ impl Settings {
     }
 }
 
-pub fn get_config_dir() -> PathBuf {
+fn get_config_dir() -> PathBuf {
     if let Some(project_dir) = get_project_dir() {
         project_dir.config_local_dir().to_path_buf()
     } else {
         PathBuf::from(".").join(".config")
+    }
+}
+
+pub fn get_data_dir() -> PathBuf {
+    if let Some(proj_dirs) = get_project_dir() {
+        proj_dirs.data_local_dir().to_path_buf()
+    } else {
+        PathBuf::from(".").join(".data")
     }
 }
 

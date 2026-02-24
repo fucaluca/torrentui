@@ -3,6 +3,8 @@ use std::sync::Arc;
 use tokio::{sync::mpsc, task::JoinHandle};
 use tokio_util::sync::CancellationToken;
 
+use tracing::error;
+
 use crate::{
     connectors::{ActionKind, ConnectorCommands, ConnectorEvents},
     settings::connectors::ConfiguredConnector,
@@ -32,20 +34,19 @@ impl ConnectorWorker {
             let mut interval = tokio::time::interval(connector.update_interval_secs);
             let connector = &connector.connector;
             let connector_name = connector.name();
+            use ConnectorEvents::*;
             loop {
-                tokio::select! {
+                let result = tokio::select! {
                     _ = cancellation_token.cancelled() => {
                         break;
                     }
                     _ = interval.tick() => {
                         match connector.get_torrent_list().await {
                             Ok(torrents) => {
-                                // TODO: handle Result
-                                let _ = event_tx.send(ConnectorEvents::UpdateTorrentList(Arc::clone( &connector_name ), torrents)).await;
+                               event_tx.send(UpdateTorrentList(Arc::clone( &connector_name ), torrents)).await
                             },
                             Err(e) => {
-                                // TODO: handle Result
-                                let _ = event_tx.send(ConnectorEvents::Error(e)).await;
+                                 event_tx.send(Error(e)).await
                             }
                         }
                     }
@@ -53,70 +54,44 @@ impl ConnectorWorker {
                         match command {
                             ConnectorCommands::Add(source) => {
                                 match connector.add_torrent(source).await {
-                                    Ok(_) => {
-                                        // TODO: handle Result
-                                        let _ = event_tx.send(ConnectorEvents::AddOk).await;
-                                    },
-                                    Err(e) => {
-                                        // TODO: handle Result
-                                        let _ = event_tx.send(ConnectorEvents::Error(e)).await;
-                                    },
+                                    Ok(_) => event_tx.send(AddOk).await,
+                                    Err(e) => event_tx.send(Error(e)).await,
                                 }
                             },
                             ConnectorCommands::Action {kind, info_hash} => {
+                                use ActionKind::*;
                                 match kind {
-                                    ActionKind::Pause => {
+                                    Pause => {
                                         match connector.pause_torrent(info_hash).await {
-                                            Ok(_) => {
-                                                // TODO: handle Result
-                                                let _ = event_tx.send(ConnectorEvents::PauseOk).await;
-                                            },
-                                            Err(e) => {
-                                                // TODO: handle Result
-                                                let _ = event_tx.send(ConnectorEvents::Error(e)).await;
-                                            }
+                                            Ok(_) => event_tx.send(PauseOk).await,
+                                            Err(e) => event_tx.send(Error(e)).await,
                                         }
                                     },
-                                    ActionKind::Start => {
+                                    Start => {
                                         match connector.start_torrent(info_hash).await {
-                                            Ok(_) => {
-                                                // TODO: handle Result
-                                                let _ = event_tx.send(ConnectorEvents::StartOk).await;
-                                            },
-                                            Err(e) => {
-                                                // TODO: handle Result
-                                                let _ = event_tx.send(ConnectorEvents::Error(e)).await;
-                                            }
+                                            Ok(_) => event_tx.send(StartOk).await,
+                                            Err(e) => event_tx.send(Error(e)).await,
                                         }
                                     },
-                                    ActionKind::Forget => {
+                                    Forget => {
                                         match connector.forget_torrent(info_hash).await {
-                                            Ok(_) => {
-                                                // TODO: handle Result
-                                                let _  = event_tx.send(ConnectorEvents::ForgetOk).await;
-                                            },
-                                            Err(e) => {
-                                                // TODO: handle Result
-                                                let _ = event_tx.send(ConnectorEvents::Error(e)).await;
-                                            },
+                                            Ok(_) => event_tx.send(ForgetOk).await,
+                                            Err(e) => event_tx.send(Error(e)).await,
                                         }
                                     },
-                                    ActionKind::Delete => {
+                                    Delete => {
                                         match connector.delete_torrent(info_hash).await {
-                                            Ok(_) => {
-                                                // TODO: handle Result
-                                                let _ = event_tx.send(ConnectorEvents::DeleteOk).await;
-                                            },
-                                            Err(e) => {
-                                                // TODO: handle Result
-                                                let _ = event_tx.send(ConnectorEvents::Error(e)).await;
-                                            },
+                                            Ok(_) => event_tx.send(DeleteOk).await,
+                                            Err(e) => event_tx.send(Error(e)).await,
                                         }
                                     }
                                 }
                             }
                         }
                     }
+                };
+                if result.is_err() {
+                    error!("{result:?}");
                 }
             }
         })

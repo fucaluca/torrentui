@@ -5,6 +5,7 @@ use ratatui::{
     layout::{HorizontalAlignment, Rect},
     widgets::{Paragraph, Widget},
 };
+use tracing::error;
 
 use crate::{
     connectors::ConnectorEvents,
@@ -30,22 +31,24 @@ impl Notification {
 impl From<ConnectorEvents> for Option<Notification> {
     fn from(value: ConnectorEvents) -> Self {
         match value {
-            ConnectorEvents::AddOk => Some(Notification::Info("Torrent added".into())),
-            ConnectorEvents::PauseOk => Some(Notification::Info("Torrent paused".into())),
-            ConnectorEvents::StartOk => Some(Notification::Info("Torrent started".into())),
-            ConnectorEvents::ForgetOk => Some(Notification::Info(
-                "Torrent removed from list (files kept)".into(),
-            )),
-            ConnectorEvents::DeleteOk => {
-                Some(Notification::Info("Torrent deleted with files".into()))
+            ConnectorEvents::AddOk => Some(Notification::info("Torrent added")),
+            ConnectorEvents::PauseOk => Some(Notification::info("Torrent paused")),
+            ConnectorEvents::StartOk => Some(Notification::info("Torrent started")),
+            ConnectorEvents::ForgetOk => {
+                Some(Notification::info("Torrent removed from list (files kept)"))
             }
-            ConnectorEvents::Error(e) => Some(Notification::Error(e.to_string())),
+            ConnectorEvents::DeleteOk => Some(Notification::info("Torrent deleted with files")),
+            ConnectorEvents::Error(e) => {
+                error!("{e:#?}");
+                Some(Notification::error(e.to_string()))
+            }
             _ => None,
         }
     }
 }
 impl From<ActionError> for Option<Notification> {
     fn from(value: ActionError) -> Self {
+        error!("{value:#?}");
         use ActionError::*;
         match value {
             CommandSendFailed { .. } => Some(Notification::error("Command send failed")),

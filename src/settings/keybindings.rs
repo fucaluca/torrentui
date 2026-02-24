@@ -3,6 +3,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use indexmap::IndexMap;
 use serde::Deserialize;
 use snafu::Snafu;
+use tracing::debug;
 
 use crate::domain::{
     action::Action,
@@ -128,9 +129,10 @@ impl<'de> Deserialize<'de> for KeyBindings {
             .map(|(mode, inner_map)| {
                 let mut root_bindings = KeyBindingsNode::default();
 
-                for (raw, value) in inner_map {
+                for (raw, kb_value) in inner_map {
                     let key_events = parse_key_sequence(&raw).map_err(serde::de::Error::custom)?;
-                    add_binding_to_tree(&mut root_bindings, key_events, value);
+                    debug!("Add {raw} = {kb_value:?} to keybindings trie");
+                    add_binding_to_tree(&mut root_bindings, key_events, kb_value);
                 }
 
                 Ok((mode, root_bindings))
