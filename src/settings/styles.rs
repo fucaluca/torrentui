@@ -14,7 +14,7 @@ pub enum StyleMode {
     Table,
     Notification,
     WhichKey,
-    AddTorrent(AddMagnetMode),
+    AddMagnet(AddMagnetMode),
     #[default]
     Default,
 }
@@ -26,15 +26,15 @@ impl FromStr for StyleMode {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "Active" => Ok(StyleMode::Active),
-            "Paused" => Ok(StyleMode::Paused),
-            "Initializing" => Ok(StyleMode::Initializing),
-            "Error" => Ok(StyleMode::Error),
-            "Table" => Ok(StyleMode::Table),
-            "Notification" => Ok(StyleMode::Notification),
-            "WhichKey" => Ok(StyleMode::WhichKey),
-            "Default" => Ok(StyleMode::default()),
-            _ => Err(format!("Unknown key mode: {}", s)),
+            "active" => Ok(StyleMode::Active),
+            "paused" => Ok(StyleMode::Paused),
+            "initializing" => Ok(StyleMode::Initializing),
+            "error" => Ok(StyleMode::Error),
+            "table" => Ok(StyleMode::Table),
+            "notification" => Ok(StyleMode::Notification),
+            "which-key" => Ok(StyleMode::WhichKey),
+            "default" => Ok(StyleMode::default()),
+            _ => Err(format!("Unknown style mode: {}", s)),
         }
     }
 }
@@ -84,13 +84,13 @@ impl<'de> Deserialize<'de> for Styles {
             #[serde(flatten)]
             flat: HashMap<String, HashMap<String, String>>,
 
-            #[serde(rename = "AddTorrent")]
-            add_torrent: Option<AddTorrentGroup>,
+            #[serde(rename = "add-magnet")]
+            add_magnet: Option<AddMagnetGroup>,
         }
 
         #[derive(Debug, Deserialize, Default)]
-        #[serde(rename_all = "PascalCase")]
-        struct AddTorrentGroup {
+        #[serde(rename_all = "kebab-case")]
+        struct AddMagnetGroup {
             input: Option<HashMap<String, String>>,
             connectors: Option<HashMap<String, String>>,
         }
@@ -106,12 +106,12 @@ impl<'de> Deserialize<'de> for Styles {
             parsed_map.insert(mode, bindings);
         }
 
-        if let Some(add) = helper.add_torrent {
+        if let Some(add) = helper.add_magnet {
             if let Some(bindings) = add.input {
-                parsed_map.insert(StyleMode::AddTorrent(AddMagnetMode::Input), bindings);
+                parsed_map.insert(StyleMode::AddMagnet(AddMagnetMode::Input), bindings);
             }
             if let Some(bindings) = add.connectors {
-                parsed_map.insert(StyleMode::AddTorrent(AddMagnetMode::Connectors), bindings);
+                parsed_map.insert(StyleMode::AddMagnet(AddMagnetMode::Connectors), bindings);
             }
         }
 

@@ -5,7 +5,7 @@ use snafu::{ResultExt, Snafu, ensure};
 
 use crate::{
     connectors::{
-        AddTorrentFailedSnafu, Connector, ConnectorError, ConnectorName, DeleteTorrentSnafu,
+        AddMagnetFailedSnafu, Connector, ConnectorError, ConnectorName, DeleteTorrentSnafu,
         ForgetTorrentSnafu, GetListFailedSnafu, PauseTorrentSnafu, StartTorrentSnafu,
     },
     domain::torrent::{InfoHash, Source, TorrentInfo},
@@ -78,7 +78,7 @@ impl<T: Api + Send + Sync + 'static> Connector for Rqbit<T> {
             .add_torrent(torrent_source)
             .await
             .boxed()
-            .context(AddTorrentFailedSnafu {
+            .context(AddMagnetFailedSnafu {
                 connector_name: Arc::clone(&self.name),
                 operation: "Add torrent",
             })?;
@@ -313,7 +313,7 @@ mod test {
 
         assert_matches!(
             result,
-            Err(ConnectorError::AddTorrentFailed { source, connector_name, operation }) => {
+            Err(ConnectorError::AddMagnetFailed { source, connector_name, operation }) => {
                 let api_error = source.downcast_ref::<ApiError>()
                     .ok_or_eyre("Expected ApiError inside Box")?;
                 assert_matches!(api_error, ApiError::Api { .. });

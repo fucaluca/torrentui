@@ -23,11 +23,11 @@ pub struct Settings {
     #[cfg_attr(test, serde(default))]
     pub notification_timeout_millis: u64,
     #[cfg_attr(test, serde(default))]
-    pub show_help_auto: bool,
+    pub auto_show_help: bool,
     #[cfg_attr(test, serde(default))]
     pub player_cmd: String,
     #[cfg_attr(test, serde(default))]
-    pub auto_insert_torrent: bool,
+    pub auto_insert_magnet: bool,
 }
 
 impl Settings {

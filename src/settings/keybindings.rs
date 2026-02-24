@@ -93,13 +93,13 @@ impl<'de> Deserialize<'de> for KeyBindings {
             #[serde(flatten)]
             flat: IndexMap<String, IndexMap<String, KeyBindingValue>>,
 
-            #[serde(rename = "AddTorrent")]
-            add_torrent: Option<AddTorrentGroup>,
+            #[serde(rename = "add-magnet")]
+            add_magnet: Option<AddMagnetGroup>,
         }
 
         #[derive(Debug, Deserialize, Default)]
-        #[serde(rename_all = "PascalCase")]
-        struct AddTorrentGroup {
+        #[serde(rename_all = "kebab-case")]
+        struct AddMagnetGroup {
             input: Option<IndexMap<String, KeyBindingValue>>,
             connectors: Option<IndexMap<String, KeyBindingValue>>,
         }
@@ -115,12 +115,12 @@ impl<'de> Deserialize<'de> for KeyBindings {
             parsed_map.insert(mode, bindings);
         }
 
-        if let Some(add) = helper.add_torrent {
+        if let Some(add) = helper.add_magnet {
             if let Some(bindings) = add.input {
-                parsed_map.insert(KeyMode::AddTorrent(AddMagnetMode::Input), bindings);
+                parsed_map.insert(KeyMode::AddMagnet(AddMagnetMode::Input), bindings);
             }
             if let Some(bindings) = add.connectors {
-                parsed_map.insert(KeyMode::AddTorrent(AddMagnetMode::Connectors), bindings);
+                parsed_map.insert(KeyMode::AddMagnet(AddMagnetMode::Connectors), bindings);
             }
         }
 
@@ -293,7 +293,7 @@ mod tests {
     #[test]
     fn parse_single_key_without_description() -> color_eyre::Result<()> {
         let config_str = r#"
-            [keybindings.TorrentList]
+            [keybindings.torrent-list]
             "<q>" = "Quit"
         "#;
         let settings = Settings::test_settings(config_str)?;
@@ -313,7 +313,7 @@ mod tests {
     #[test]
     fn parse_single_key_with_description() -> color_eyre::Result<()> {
         let config_str = r#"
-            [keybindings.TorrentList]
+            [keybindings.torrent-list]
             "<q>" = { action = "Quit", description = "Quit" }
         "#;
         let settings = Settings::test_settings(config_str)?;
@@ -335,7 +335,7 @@ mod tests {
     #[test]
     fn parse_keys_with_ctrl_modifier() -> color_eyre::Result<()> {
         let config_str = r#"
-            [keybindings.TorrentList]
+            [keybindings.torrent-list]
             "<ctrl-q>" = "Quit"
         "#;
         let settings = Settings::test_settings(config_str)?;
@@ -357,7 +357,7 @@ mod tests {
     #[test]
     fn parse_keys_with_alt_modifier() -> color_eyre::Result<()> {
         let config_str = r#"
-            [keybindings.TorrentList]
+            [keybindings.torrent-list]
             "<alt-q>" = "Quit"
         "#;
         let settings = Settings::test_settings(config_str)?;
@@ -379,7 +379,7 @@ mod tests {
     #[test]
     fn parse_keys_with_shift_modifier() -> color_eyre::Result<()> {
         let config_str = r#"
-            [keybindings.TorrentList]
+            [keybindings.torrent-list]
             "<shift-q>" = "Quit"
         "#;
         let settings = Settings::test_settings(config_str)?;
@@ -401,8 +401,8 @@ mod tests {
     #[test]
     fn make_keybindings_tree() -> color_eyre::Result<()> {
         let config_str = r#"
-          [keybindings.TorrentList]
-          "<ctrl-a><alt-b>" = "AddTorrent"
+          [keybindings.torrent-list]
+          "<ctrl-a><alt-b>" = "AddMagnet"
         "#;
         let settings = Settings::test_settings(config_str)?;
         let key_event1 = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL);
@@ -424,7 +424,7 @@ mod tests {
             .get(&key_event2)
             .unwrap_or_else(|| panic!("KeyEvent {key_event2:#?} not found"));
 
-        assert_eq!(next.action, Action::AddTorrent);
+        assert_eq!(next.action, Action::AddMagnet);
         assert_eq!(next.description, None);
         assert_eq!(next.next.is_empty(), true);
 
@@ -434,9 +434,9 @@ mod tests {
     #[test]
     fn keybindings_with_common_prefix_share_node() -> color_eyre::Result<()> {
         let config_str = r#"
-            [keybindings.TorrentList]
+            [keybindings.torrent-list]
             "<ctrl-a>" = { description = "Add" }
-            "<ctrl-a><t>" = { action = "AddTorrent", description = "Torrent" }
+            "<ctrl-a><t>" = { action = "AddMagnet", description = "Torrent" }
         "#;
         let settings = Settings::test_settings(config_str)?;
         let key_event1 = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL);
@@ -458,7 +458,7 @@ mod tests {
             .get(&key_event2)
             .unwrap_or_else(|| panic!("KeyEvent {key_event2:#?} not found"));
 
-        assert_eq!(next.action, Action::AddTorrent);
+        assert_eq!(next.action, Action::AddMagnet);
         assert_eq!(next.description, Some("Torrent".to_string()));
         assert_eq!(next.next.is_empty(), true);
 

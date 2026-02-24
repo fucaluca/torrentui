@@ -1,10 +1,9 @@
-update_interval_secs = 1
 notification_timeout_millis = 100
 player_cmd = "setsid mpv"
-show_help_auto = true
-auto_insert_torrent = true
+auto_show_help = true
+auto_insert_magnet = true
 
-[keybindings.TorrentList]
+[keybindings.torrent-list]
 "<k>" = "Up"
 "<j>" = "Down"
 "<up>" = "Up"
@@ -13,7 +12,7 @@ auto_insert_torrent = true
 "<g><e>" = "GotoBottom"
 "<space><space>" = "PauseToggle"
 "<space><o>" = "Play"
-"<space><a>" = "AddTorrent"
+"<space><a>" = "AddMagnet"
 "<ctrl-d>" = { description = "Delete torrent" }
 "<ctrl-d><f>" = { action = "Forget", description = "Forget about the torrent, keep the files" }
 "<ctrl-d><d>" = { action = "Delete", description = "Forget about the torrent, remove the files" }
@@ -21,7 +20,7 @@ auto_insert_torrent = true
 "<?>" = "Help"
 "<q>" = "Quit"
 
-[keybindings.AddTorrent.Input]
+[keybindings.add-magnet.input]
 "<k>" = "Up"
 "<j>" = "Down"
 "<up>" = "Up"
@@ -32,7 +31,7 @@ auto_insert_torrent = true
 "<esc>" = "Escape"
 "<?>" = "Help"
 
-[keybindings.AddTorrent.Connectors]
+[keybindings.add-magnet.connectors]
 "<k>" = "Up"
 "<j>" = "Down"
 "<up>" = "Up"
@@ -50,37 +49,37 @@ api_version = "v8"
 update_interval_secs = 1
 selected_by_default = true
 
-[styles.Active]
+[styles.active]
 upload = "black on yellow"
 download = "black on blue"
 
-[styles.Paused]
+[styles.paused]
 default = "dark gray on rgb:0,0,0"
 
-[styles.Notification]
+[styles.notification]
 info = "blue on rgb:0,0,0"
 error = "red on rgb:0,0,0"
 
-[styles.WhichKey]
+[styles.which-key]
 key = "yellow on rgb:0,0,0"
 description = "blue on rgb:0,0,0"
 next = "magenta on rgb:0,0,0"
 divider = "rgb:80,80,80 on rgb:0,0,0"
 default = "blue on rgb:0,0,0"
 
-[styles.Default]
+[styles.default]
 default = "white on rgb:0,0,0"
 highlight = "yellow on black"
 dividers = "white on rgb:0,0,0"
 
-[styles.AddTorrent.Input]
+[styles.add-magnet.input]
 input_highlight = "black on white"
 selected_connector = "gray on rgb:30,30,30"
 insert_mode = "blue on rgb:30,30,30"
 border = "blue on rgb:30,30,30"
 default = "gray on rgb:30,30,30"
 
-[styles.AddTorrent.Connectors]
+[styles.add-magnet.connectors]
 input = "dark gray on rgb:30,30,30"
 input_highlight = "dark gray on rgb:30,30,30"
 selected_connector = "yellow on rgb:30,30,30"

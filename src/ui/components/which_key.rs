@@ -228,7 +228,7 @@ mod tests {
     #[test]
     fn styles() -> color_eyre::Result<()> {
         let config_str = r#"
-            [styles.WhichKey]
+            [styles.which-key]
             key = "green on rgb:0,0,0"
             description = "blue on rgb:0,0,0"
             default = "yellow on rgb:0,0,0"

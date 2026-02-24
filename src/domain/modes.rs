@@ -22,7 +22,7 @@ impl AddMagnetMode {
 pub enum KeyMode {
     #[default]
     TorrentList,
-    AddTorrent(AddMagnetMode),
+    AddMagnet(AddMagnetMode),
 }
 
 use std::str::FromStr;
@@ -32,7 +32,7 @@ impl FromStr for KeyMode {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "TorrentList" => Ok(KeyMode::TorrentList),
+            "torrent-list" => Ok(KeyMode::TorrentList),
             _ => Err(format!("Unknown key mode: {}", s)),
         }
     }
@@ -41,7 +41,7 @@ impl FromStr for KeyMode {
 impl From<&CurrentScreen> for KeyMode {
     fn from(screen: &CurrentScreen) -> Self {
         match screen {
-            CurrentScreen::AddTorrent(mode) => Self::AddTorrent(*mode),
+            CurrentScreen::AddMagnet(mode) => Self::AddMagnet(*mode),
             CurrentScreen::TorrentList => Self::TorrentList,
         }
     }

@@ -13,7 +13,7 @@ use crate::{
 #[cfg_attr(test, derive(Eq, PartialEq))]
 pub enum Action {
     Quit,
-    AddTorrent,
+    AddMagnet,
     Up,
     Down,
     Left,
@@ -52,7 +52,7 @@ impl<'de> Deserialize<'de> for Action {
         use Action::*;
         match parsed_action.as_str() {
             "Quit" => Ok(Quit),
-            "AddTorrent" => Ok(AddTorrent),
+            "AddMagnet" => Ok(AddMagnet),
             "Help" => Ok(Help(CurrentScreen::default())),
             "Up" => Ok(Up),
             "Down" => Ok(Down),
@@ -82,7 +82,7 @@ impl<'de> Deserialize<'de> for Action {
                 variant,
                 &[
                     "Quit",
-                    "AddTorrent",
+                    "AddMagnet",
                     "Help",
                     "Up",
                     "Down",
@@ -116,7 +116,7 @@ impl Display for Action {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Quit => write!(f, "Quit"),
-            Self::AddTorrent => write!(f, "AddTorrent"),
+            Self::AddMagnet => write!(f, "AddMagnet"),
             Self::Up => write!(f, "Up"),
             Self::Down => write!(f, "Down"),
             Self::Left => write!(f, "Left"),

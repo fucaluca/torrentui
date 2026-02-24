@@ -26,7 +26,7 @@ use crate::{
 pub enum CurrentScreen {
     #[default]
     TorrentList,
-    AddTorrent(AddMagnetMode),
+    AddMagnet(AddMagnetMode),
 }
 
 pub struct App {
@@ -92,7 +92,7 @@ impl App {
             let buffer = frame.buffer_mut();
             let [content_area, notification_area] = main_area.areas(area);
             match self.current_screen {
-                CurrentScreen::AddTorrent(_) => {
+                CurrentScreen::AddMagnet(_) => {
                     self.components
                         .torrent_list
                         .draw(buffer, content_area, &self.settings);
@@ -163,7 +163,7 @@ impl App {
                     .handle_key_events(key_event, &mut self.settings, &mut self.connectors)
                     .await
             }
-            CurrentScreen::AddTorrent(_) => {
+            CurrentScreen::AddMagnet(_) => {
                 self.components
                     .add_torrent
                     .handle_key_events(key_event, &mut self.settings, &mut self.connectors)
@@ -178,13 +178,13 @@ impl App {
                 }
                 match action.unwrap() {
                     Action::Quit => self.should_quit = true,
-                    Action::AddTorrent => {
+                    Action::AddMagnet => {
                         self.components.add_torrent.update(&self.settings);
-                        self.switch_screen(CurrentScreen::AddTorrent(AddMagnetMode::Input))
+                        self.switch_screen(CurrentScreen::AddMagnet(AddMagnetMode::Input))
                     }
                     Action::Help(mode) => self.show_help_on_current_screen(Some(&mode))?,
                     Action::Next => {
-                        if self.settings.show_help_auto {
+                        if self.settings.auto_show_help {
                             self.show_help_on_current_screen(None)?;
                         }
                     }

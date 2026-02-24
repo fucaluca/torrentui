@@ -68,7 +68,7 @@ impl Drawable for AddMagnet {
 
         let style = settings
             .styles
-            .get_style(&StyleMode::AddTorrent(self.mode), "border");
+            .get_style(&StyleMode::AddMagnet(self.mode), "border");
 
         let block = Block::default()
             .borders(Borders::ALL)
@@ -91,7 +91,7 @@ impl Drawable for AddMagnet {
 
         let text_area_style = settings
             .styles
-            .get_style(&StyleMode::AddTorrent(self.mode), "input");
+            .get_style(&StyleMode::AddMagnet(self.mode), "input");
 
         let table = self.build_table(settings);
 
@@ -147,7 +147,7 @@ impl AddMagnet {
     ) -> Result<Option<Action>, ActionError> {
         let action = settings
             .keybindings
-            .action(KeyMode::AddTorrent(AddMagnetMode::Input), key_event)
+            .action(KeyMode::AddMagnet(AddMagnetMode::Input), key_event)
             .context(GetActionFailedSnafu)?;
 
         if action.is_none() {
@@ -184,7 +184,7 @@ impl AddMagnet {
                 self.mode.toggle();
                 Ok(None)
             }
-            Help(_) => Ok(Some(Help(CurrentScreen::AddTorrent(AddMagnetMode::Input)))),
+            Help(_) => Ok(Some(Help(CurrentScreen::AddMagnet(AddMagnetMode::Input)))),
             action => Ok(Some(action)),
         }
     }
@@ -197,7 +197,7 @@ impl AddMagnet {
     ) -> Result<Option<Action>, ActionError> {
         let action = settings
             .keybindings
-            .action(KeyMode::AddTorrent(AddMagnetMode::Connectors), key_event)
+            .action(KeyMode::AddMagnet(AddMagnetMode::Connectors), key_event)
             .context(GetActionFailedSnafu)?;
         if action.is_none() {
             return Ok(None);
@@ -224,7 +224,7 @@ impl AddMagnet {
                 self.table_state.select_next();
                 Ok(None)
             }
-            Help(_) => Ok(Some(Help(CurrentScreen::AddTorrent(
+            Help(_) => Ok(Some(Help(CurrentScreen::AddMagnet(
                 AddMagnetMode::Connectors,
             )))),
             action => Ok(Some(action)),
@@ -270,7 +270,7 @@ impl AddMagnet {
     }
 
     pub fn update(&mut self, settings: &Settings) {
-        if settings.auto_insert_torrent {
+        if settings.auto_insert_magnet {
             self.try_insert_magnet_silent();
         }
     }
@@ -306,12 +306,12 @@ impl AddMagnet {
                 if connector.selected {
                     style = settings
                         .styles
-                        .get_style(&StyleMode::AddTorrent(self.mode), "selected_connector");
+                        .get_style(&StyleMode::AddMagnet(self.mode), "selected_connector");
                     icon = assets::Icons::CHECKED;
                 } else {
                     style = settings
                         .styles
-                        .get_style(&StyleMode::AddTorrent(self.mode), "default");
+                        .get_style(&StyleMode::AddMagnet(self.mode), "default");
                     icon = assets::Icons::UNCHECKED;
                 }
                 Row::new(vec![
@@ -324,11 +324,11 @@ impl AddMagnet {
         let widths = [Constraint::Length(2), Constraint::Fill(1)];
         let table_style = settings
             .styles
-            .get_style(&StyleMode::AddTorrent(self.mode), "default");
+            .get_style(&StyleMode::AddMagnet(self.mode), "default");
 
         let highlight_style = settings
             .styles
-            .get_style(&StyleMode::AddTorrent(self.mode), "connectors_highlight");
+            .get_style(&StyleMode::AddMagnet(self.mode), "connectors_highlight");
         Table::new(rows, widths)
             .column_spacing(1)
             .style(table_style)

@@ -45,7 +45,7 @@ pub enum ConnectorError {
         operation: String,
     },
     #[snafu(display("Failed to add magnet"))]
-    AddTorrentFailed {
+    AddMagnetFailed {
         source: BoxedError,
         connector_name: Arc<String>,
         operation: String,

@@ -168,7 +168,7 @@ mod tests {
     #[test]
     fn notify_add_ok() -> color_eyre::Result<()> {
         let config_str = r#"
-            [styles.Notification]
+            [styles.notification]
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn notify_start_ok() -> color_eyre::Result<()> {
         let config_str = r#"
-            [styles.Notification]
+            [styles.notification]
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
@@ -218,7 +218,7 @@ mod tests {
     #[test]
     fn notify_pause_ok() -> color_eyre::Result<()> {
         let config_str = r#"
-            [styles.Notification]
+            [styles.notification]
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
@@ -244,7 +244,7 @@ mod tests {
     #[test]
     fn notify_forget_ok() -> color_eyre::Result<()> {
         let config_str = r#"
-            [styles.Notification]
+            [styles.notification]
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
@@ -270,7 +270,7 @@ mod tests {
     #[test]
     fn notify_delete_ok() -> color_eyre::Result<()> {
         let config_str = r#"
-            [styles.Notification]
+            [styles.notification]
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
@@ -296,7 +296,7 @@ mod tests {
     #[test]
     fn notify_error() -> color_eyre::Result<()> {
         let config_str = r#"
-            [styles.Notification]
+            [styles.notification]
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
@@ -323,7 +323,7 @@ mod tests {
     fn remove_notification() -> color_eyre::Result<()> {
         let config_str = r#"
             notification_timeout_millis = 0
-            [styles.Notification]
+            [styles.notification]
             info = "blue on rgb:0,0,0"
             error = "red on blue"
         "#;
