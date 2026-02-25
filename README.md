@@ -22,7 +22,7 @@ A minimal TUI client written in Rust for the [rqbit](https://github.com/ikatson/
 
 ### From source
 ```bash
-git clone https://github.com/yourusername/torrentui
+git clone https://github.com/fucaluca/torrentui
 cd torrentui
 cargo build --release
 # Binary: target/release/tt
