@@ -73,6 +73,7 @@ impl Drawable for AddMagnet {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
+            .title(" Add magnet ")
             .style(style);
 
         let inner_area = block.inner(centered_area);
