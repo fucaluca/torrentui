@@ -3,6 +3,11 @@
 # TorrenTUI
 A minimal TUI client written in Rust for the [rqbit](https://github.com/ikatson/rqbit) torrent client. Manage torrents from your terminal.
 
+<img width="2529" height="1326" alt="Screenshot 1" src="https://github.com/user-attachments/assets/8b5fe275-c620-4f6c-bc2d-33be30f5564f" />
+
+
+<img width="2526" height="1334" alt="Captura de pantalla 2026-02-25 04-08-22" src="https://github.com/user-attachments/assets/7ece0db1-caf9-4c26-8745-02d857f2bfa5" />
+
 ## Features
 * View list of torrents, their status and progress.
 * Add torrents via magnet links.
