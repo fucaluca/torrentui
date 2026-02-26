@@ -419,7 +419,7 @@ mod tests {
     }
 
     #[test]
-    fn make_keybindings_tree() -> color_eyre::Result<()> {
+    fn build_keybindings_tree() -> color_eyre::Result<()> {
         let config_str = r#"
           [keybindings.torrent-list]
           "<ctrl-a><alt-b>" = "AddMagnet"
@@ -482,6 +482,45 @@ mod tests {
         assert_eq!(next.description, Some("Torrent".to_string()));
         assert_eq!(next.next.is_empty(), true);
 
+        Ok(())
+    }
+
+    #[test]
+    fn keybindings_trie_not_affected_by_entry_order() -> color_eyre::Result<()> {
+        let config_str = r#"
+            [keybindings.torrent-list]
+            "<ctrl-d><f>" = "Forget"
+            [keybindings.torrent-list."<ctrl-d>"]
+            description = "Delete"
+            "<d>" = "Delete"
+        "#;
+        let settings = Settings::test_settings(config_str)?;
+        let key_event1 = KeyEvent::new(KeyCode::Char('d'), KeyModifiers::CONTROL);
+        let key_event2 = KeyEvent::new(KeyCode::Char('f'), KeyModifiers::NONE);
+
+        let keybindings = settings
+            .keybindings
+            .map
+            .get(&KeyMode::TorrentList)
+            .and_then(|k| k.next.get(&key_event1))
+            .unwrap_or_else(|| panic!("KeyEvent {key_event1:#?} not found"));
+
+        assert_eq!(keybindings.action, Action::Next);
+        assert_eq!(keybindings.description, Some("Delete".to_string()));
+        assert_eq!(
+            keybindings.next.is_empty(),
+            false,
+            "keybindings.next must be empty"
+        );
+
+        let next = keybindings
+            .next
+            .get(&key_event2)
+            .unwrap_or_else(|| panic!("KeyEvent {key_event2:#?} not found"));
+
+        assert_eq!(next.action, Action::Forget);
+        assert_eq!(next.description, None);
+        assert_eq!(next.next.is_empty(), true);
         Ok(())
     }
 }
