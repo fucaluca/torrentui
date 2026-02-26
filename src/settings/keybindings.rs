@@ -307,7 +307,7 @@ fn parse_key_code_with_modifiers(
 #[cfg(test)]
 mod tests {
     use super::{Action, KeyBindingsNode, KeyCode, KeyEvent, KeyMode, KeyModifiers};
-    use crate::settings::Settings;
+    use crate::{domain::modes::AddMagnetMode, settings::Settings};
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -315,6 +315,10 @@ mod tests {
         let config_str = r#"
             [keybindings.torrent-list]
             "<q>" = "Quit"
+            [keybindings.add-magnet.input]
+            "<backspace>" = "Backspace"
+            [keybindings.add-magnet.connectors]
+            "<enter>" = "Send"
         "#;
         let settings = Settings::test_settings(config_str)?;
         let key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
@@ -325,6 +329,28 @@ mod tests {
             .and_then(|k| k.next.get(&key_event))
             .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
         assert_eq!(keybindings.action, Action::Quit);
+        assert_eq!(keybindings.description, None);
+        assert_eq!(keybindings.next.is_empty(), true);
+
+        let key_event = KeyEvent::new(KeyCode::Backspace, KeyModifiers::NONE);
+        let keybindings: &KeyBindingsNode = settings
+            .keybindings
+            .map
+            .get(&KeyMode::AddMagnet(AddMagnetMode::Input))
+            .and_then(|k| k.next.get(&key_event))
+            .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
+        assert_eq!(keybindings.action, Action::Backspace);
+        assert_eq!(keybindings.description, None);
+        assert_eq!(keybindings.next.is_empty(), true);
+
+        let key_event = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
+        let keybindings: &KeyBindingsNode = settings
+            .keybindings
+            .map
+            .get(&KeyMode::AddMagnet(AddMagnetMode::Connectors))
+            .and_then(|k| k.next.get(&key_event))
+            .unwrap_or_else(|| panic!("KeyEvent {key_event:#?} not found"));
+        assert_eq!(keybindings.action, Action::Send);
         assert_eq!(keybindings.description, None);
         assert_eq!(keybindings.next.is_empty(), true);
         Ok(())
