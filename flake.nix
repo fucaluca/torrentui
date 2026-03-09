@@ -69,7 +69,7 @@
           cov-html
           nt
           grcov
-          gh
+          tea
 
           # Pre-commit dependencies
           pre-commit
