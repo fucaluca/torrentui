@@ -3,11 +3,6 @@
 # TorrenTUI
 A minimal TUI client written in Rust for the [rqbit](https://github.com/ikatson/rqbit) torrent client. Manage torrents from your terminal.
 
-<img width="2529" height="1326" alt="Screenshot 1" src="https://github.com/user-attachments/assets/8b5fe275-c620-4f6c-bc2d-33be30f5564f" />
-
-
-<img width="2526" height="1334" alt="Captura de pantalla 2026-02-25 04-08-22" src="https://github.com/user-attachments/assets/7ece0db1-caf9-4c26-8745-02d857f2bfa5" />
-
 ## Features
 * View list of torrents, their status and progress.
 * Add torrents via magnet links.
@@ -22,7 +17,7 @@ A minimal TUI client written in Rust for the [rqbit](https://github.com/ikatson/
 
 ### From source
 ```bash
-git clone https://github.com/fucaluca/torrentui
+git clone https://codeberg.org/vatia/torrentui.git
 cd torrentui
 cargo build --release
 # Binary: target/release/tt
@@ -30,12 +25,12 @@ cargo build --release
 
 ### Nix (flake)
 ```bash
-nix profile add github:fucaluca/torrentui
+nix profile add git+https://codeberg.org/vatia/torrentui.git
 ```
 Or add to your flake.nix:
 ```nix
 inputs = {
-  torrentui.url = "github:fucaluca/torrentui";
+  torrentui.url = "git+https://codeberg.org/vatia/torrentui.git";
 }
 ```
 and to your home.nix (for home‑manager users):
@@ -79,7 +74,9 @@ imdl torrent link file.torrent
 ## Configuration
 The application uses a built‑in default configuration. If you wish to override any settings, create a file ~/.config/torrentui/config.toml.
 
-Default configuration:
+<details>
+<summary>Default configuration</summary>
+
 ```toml
 notification_timeout_millis = 100
 player_cmd = "setsid mpv"
@@ -170,6 +167,9 @@ connectors_highlight = "black on white"
 border = "blue on rgb:30,30,30"
 default = "blue on rgb:30,30,30"
 ```
+</details>
+
+
 For Nix users, settings can be defined via programs.torrentui.settings
 
 ## Customizing key bindings

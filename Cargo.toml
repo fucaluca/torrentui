@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Sergei Shavlovskii <fucaluca@proton.me>"]
 license = "MIT"
 edition = "2024"
+repository = "https://codeberg.org/vatia/torrentui/"
 description = "A TUI client for torrents"
 default-run = "torrentui"
 
