@@ -1,3 +1,4 @@
+[![Codeberg](https://img.shields.io/badge/Codeberg-main_repo-2185d0?logo=codeberg&logoColor=white)](https://codeberg.org/vatia/torrentui)
 [![Built With Ratatui](https://img.shields.io/badge/Built_With_Ratatui-000?logo=ratatui&logoColor=fff)](https://ratatui.rs/)
 
 # TorrenTUI
