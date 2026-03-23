@@ -20,18 +20,19 @@ A minimal TUI client written in Rust for the [rqbit](https://github.com/ikatson/
 ```bash
 git clone https://codeberg.org/vatia/torrentui.git
 cd torrentui
+git switch master
 cargo build --release
 # Binary: target/release/tt
 ```
 
 ### Nix (flake)
 ```bash
-nix profile add git+https://codeberg.org/vatia/torrentui.git
+nix profile add git+https://codeberg.org/vatia/torrentui.git?ref=master
 ```
 Or add to your flake.nix:
 ```nix
 inputs = {
-  torrentui.url = "git+https://codeberg.org/vatia/torrentui.git";
+  torrentui.url = "git+https://codeberg.org/vatia/torrentui.git?ref=master";
 }
 ```
 and to your home.nix (for home‑manager users):
